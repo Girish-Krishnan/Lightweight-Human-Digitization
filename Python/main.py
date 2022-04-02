@@ -22,6 +22,5 @@ cam_0.add_image(image_name)
 # cam_2.add_image(image_name)
 # cam_3.add_image(image_name)
 
-cam_0.get_RBGD()
+cam_0.get_RGBD()
 cam_0.point_cloud()
-cam_0.visualize()

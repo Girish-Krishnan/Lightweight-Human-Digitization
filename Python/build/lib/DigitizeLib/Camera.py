@@ -19,9 +19,13 @@ class Camera:
             self.img_center = param["cam_"+str(self.index)+"_r"]["img_center"]
             self.rotation = param["cam_"+str(self.index)+"_r"]["rotation"]
             self.translation = param["cam_"+str(self.index)+"_r"]["translation"]
-
+            cx = self.img_center[0]
+            cy = self.img_center[1]
+            S = self.rotation
+            
             self.img_id = ""
-    
+            self.rgbd = []
+
     def add_image(self,img_name):
         
         self.img_id = str(img_name) + "_0" + str(self.index)
@@ -40,7 +44,7 @@ class Camera:
         plt.imshow(self.depth_map)
         plt.show()
 
-    def get_RBGD(self):
+    def get_RGBD(self):
         color = './data/THuman/captures_1024_1024/'+self.img_id+'.png'
         depth = './data/Depth_Maps/'+ self.img_id +"_depth.png"
 
@@ -48,6 +52,21 @@ class Camera:
         depth_raw = o3d.io.read_image(depth)
         self.rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_raw, depth_raw)
 
+        for i in range(len(self.depth_map)):
+             (self.rgbd).append([])
+             for j in range(len(self.depth_map[i])):
+                 #if (self.depth_map[i][j] != 0):
+                    (self.rgbd)[i].append([])
+                    (self.rgbd)[i][j].append(i)
+                    (self.rgbd)[i][j].append(j)
+                    (self.rgbd)[i][j].append(self.depth_map[i][j])
+                    (self.rgbd)[i][j].append(self.image[i][j][2])
+                    (self.rgbd)[i][j].append(self.image[i][j][1])
+                    (self.rgbd)[i][j].append(self.image[i][j][0])
+                    
+
+        
+        
     def display_RGBD(self):
         plt.subplot(1, 2, 1)
         plt.title('Image')
@@ -58,8 +77,28 @@ class Camera:
         plt.show()
 
     def point_cloud(self):
-        self.pcd = o3d.geometry.PointCloud.create_from_rgbd_image(self.rgbd_image,o3d.camera.PinholeCameraIntrinsic(o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
-        self.pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+        # self.pcd = o3d.geometry.PointCloud.create_from_rgbd_image(self.rgbd_image,o3d.camera.PinholeCameraIntrinsic(o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
+        # self.pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+        
+        #mean_Z=np.mean(self.rgbd,axis=0)[2]
+        #spatial_query=self.rgbd[abs(self.rgbd[:,2]-mean_Z)<1]
+        xyz=(self.rgbd)[:][:][:][3:]
+        rgb=(self.rgbd)[:][:][:][:3]
+        
+        ax = plt.axes(projection='3d')
 
-    def visualize(self):
-        o3d.visualization.draw_geometries([self.pcd])
+        cn = rgb.copy()
+        
+        for i in cn:
+            for j in i:
+                for k in j:
+                    k = k/255
+
+        print(rgb)
+        #ax.scatter(xyz[:][:][0], xyz[:][:][1], xyz[:][:][2], c = cn, s=0.01)
+        #plt.show()
+
+        
+
+    #def visualize(self):
+    #    o3d.visualization.draw_geometries(self.p_cloud)
