@@ -17,10 +17,11 @@ READING IMAGE FILE AND DEPTH MAP AS INPUTS...
 """
 
 image_name = "0500"
-cam_0.add_image(image_name)
+cam_2.add_image(image_name)
 # cam_1.add_image(image_name)
 # cam_2.add_image(image_name)
 # cam_3.add_image(image_name)
 
-cam_0.get_RGBD()
-cam_0.point_cloud()
+cam_2.get_RGBD()
+cam_2.point_cloud()
+cam_2.visualize()

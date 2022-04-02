@@ -17,14 +17,17 @@ class Camera:
             self.img_size = param["cam_"+str(self.index)+"_r"]["img_size"]
             self.focal_length = param["cam_"+str(self.index)+"_r"]["focal_length"]
             self.img_center = param["cam_"+str(self.index)+"_r"]["img_center"]
-            self.rotation = param["cam_"+str(self.index)+"_r"]["rotation"]
-            self.translation = param["cam_"+str(self.index)+"_r"]["translation"]
-            cx = self.img_center[0]
-            cy = self.img_center[1]
-            S = self.rotation
-            
+            self.rotation = (param["cam_"+str(self.index)+"_r"]["rotation"])
+            self.translation = (param["cam_"+str(self.index)+"_r"]["translation"])
             self.img_id = ""
             self.rgbd = []
+            self.intrinsic_matrix = np.array([[self.focal_length[0],0,0],[0,self.focal_length[1],0],[0,0,1]])
+            self.rot_and_trans = self.rotation.copy()
+            for i in range(len(self.rot_and_trans)):
+                self.rot_and_trans[i].append(self.translation[i]) 
+
+            self.rot_and_trans = np.array(self.rot_and_trans)
+            self.main_matrix = np.matmul(self.intrinsic_matrix,self.rot_and_trans)
 
     def add_image(self,img_name):
         
@@ -45,8 +48,8 @@ class Camera:
         plt.show()
 
     def get_RGBD(self):
-        color = './data/THuman/captures_1024_1024/'+self.img_id+'.png'
-        depth = './data/Depth_Maps/'+ self.img_id +"_depth.png"
+        #color = './data/THuman/captures_1024_1024/'+self.img_id+'.png'
+        #depth = './data/Depth_Maps/'+ self.img_id +"_depth.png"
 
         #color_raw = o3d.io.read_image(color)
         #depth_raw = o3d.io.read_image(depth)
@@ -85,6 +88,12 @@ class Camera:
 
         self.rgbd = np.array(self.rgbd)
         xyz=(self.rgbd)[:,:,3:]
+        uv = np.copy(xyz)
+
+        for i in uv:
+            for j in i:
+                j[2] = 1
+
         rgb=(self.rgbd)[:,:,:3]
         
         xyz_flattened = []
@@ -94,6 +103,38 @@ class Camera:
                 xyz_flattened.append(j)
 
         self.xyz_flattened = np.array(xyz_flattened)
+
+        final = []
+
+        for i in range(len(uv)):
+            final.append([])
+            for j in range(len(uv[i])):
+                final[i].append([])
+                
+                solution = np.matmul(np.linalg.pinv(self.main_matrix),np.transpose(uv[i][j]))
+
+                print(solution)
+                
+                if (solution[3] != 0):
+                    z = 1/(solution[3])
+                    x = z*solution[0]
+                    y = z*solution[1]
+                
+                else:
+                    x = 0
+                    y = 0
+                    z = 0
+                
+                final[i][j] = [x,y,z]
+
+         
+        final_flattened = []
+
+        for i in final:
+            for j in i:
+                final_flattened.append(j)
+
+        self.final_flattened = np.array(final_flattened)
         
 
     def visualize(self):
