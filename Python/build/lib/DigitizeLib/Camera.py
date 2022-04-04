@@ -17,14 +17,17 @@ class Camera:
             self.img_size = param["cam_"+str(self.index)+"_r"]["img_size"]
             self.focal_length = param["cam_"+str(self.index)+"_r"]["focal_length"]
             self.img_center = param["cam_"+str(self.index)+"_r"]["img_center"]
-            self.rotation = param["cam_"+str(self.index)+"_r"]["rotation"]
-            self.translation = param["cam_"+str(self.index)+"_r"]["translation"]
-            cx = self.img_center[0]
-            cy = self.img_center[1]
-            S = self.rotation
-            
+            self.rotation = (param["cam_"+str(self.index)+"_r"]["rotation"])
+            self.translation = (param["cam_"+str(self.index)+"_r"]["translation"])
             self.img_id = ""
             self.rgbd = []
+            self.intrinsic_matrix = np.array([[self.focal_length[0],0,0],[0,self.focal_length[1],0],[0,0,1]])
+            self.rot_and_trans = self.rotation.copy()
+            for i in range(len(self.rot_and_trans)):
+                self.rot_and_trans[i].append(self.translation[i]) 
+
+            self.rot_and_trans = np.array(self.rot_and_trans)
+            self.main_matrix = np.matmul(self.intrinsic_matrix,self.rot_and_trans)
 
     def add_image(self,img_name):
         
@@ -51,7 +54,7 @@ class Camera:
         color_raw = o3d.io.read_image(color)
         depth_raw = o3d.io.read_image(depth)
         self.rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_raw, depth_raw)
-
+    
         for i in range(len(self.depth_map)):
              (self.rgbd).append([])
              for j in range(len(self.depth_map[i])):
@@ -77,28 +80,66 @@ class Camera:
         plt.show()
 
     def point_cloud(self):
-        # self.pcd = o3d.geometry.PointCloud.create_from_rgbd_image(self.rgbd_image,o3d.camera.PinholeCameraIntrinsic(o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
-        # self.pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-        
-        #mean_Z=np.mean(self.rgbd,axis=0)[2]
-        #spatial_query=self.rgbd[abs(self.rgbd[:,2]-mean_Z)<1]
-        xyz=(self.rgbd)[:][:][:][3:]
-        rgb=(self.rgbd)[:][:][:][:3]
-        
-        ax = plt.axes(projection='3d')
+        self.pcd = o3d.geometry.PointCloud.create_from_rgbd_image(self.rgbd_image,o3d.camera.PinholeCameraIntrinsic(o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
+        self.pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
 
-        cn = rgb.copy()
+        # self.rgbd = np.array(self.rgbd)
+        # xyz=(self.rgbd)[:,:,3:]
+        # uv = np.copy(xyz)
+
+        # for i in uv:
+        #     for j in i:
+        #         j[2] = 1
+
+        # rgb=(self.rgbd)[:,:,:3]
         
-        for i in cn:
-            for j in i:
-                for k in j:
-                    k = k/255
+        # xyz_flattened = []
 
-        print(rgb)
-        #ax.scatter(xyz[:][:][0], xyz[:][:][1], xyz[:][:][2], c = cn, s=0.01)
-        #plt.show()
+        # for i in xyz:
+        #     for j in i:
+        #         xyz_flattened.append(j)
 
+        # self.xyz_flattened = np.array(xyz_flattened)
         
+        # for a in xyz_flattened:
+        #     a[0] *= a[2]
+        #     a[1] *= a[2]
+     
 
-    #def visualize(self):
-    #    o3d.visualization.draw_geometries(self.p_cloud)
+    def visualize(self):
+        #pcd = o3d.geometry.PointCloud()
+        #pcd.points = o3d.utility.Vector3dVector(self.pcd)
+        #o3d.io.write_point_cloud("./point_cloud.ply", pcd)
+        o3d.visualization.draw_geometries([self.pcd])
+
+
+class Combiner:
+
+    def __init__(self):
+        self.c0 = Camera(0)
+        self.c1 = Camera(1)
+        self.c2 = Camera(2)
+        self.c3 = Camera(3)
+
+
+    def add_image(self,image_name):
+
+        self.c0.add_image(image_name)
+        self.c1.add_image(image_name)
+        self.c2.add_image(image_name)
+        self.c3.add_image(image_name)
+
+    def combine(self):
+        self.c0.get_RGBD()
+        self.c0.point_cloud()
+
+        self.c1.get_RGBD()
+        self.c1.point_cloud()
+
+        self.c2.get_RGBD()
+        self.c2.point_cloud()
+
+        self.c3.get_RGBD()
+        self.c3.point_cloud()
+
+        o3d.visualization.draw_geometries([self.c0.pcd + self.c1.pcd + self.c2.pcd + self.c3.pcd])
