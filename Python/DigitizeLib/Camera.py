@@ -57,19 +57,25 @@ class Camera:
 
     def point_cloud(self):
         self.pcd = []
+        self.colors = []
         for i in range(len(self.depth_map)):
             for j in range(len(self.depth_map[i])):
                 if self.depth_map[i][j] != 0:
                     self.pcd.append([i,j,self.depth_map[i][j]])
+                    self.colors.append([self.rgbd[i][j][3],self.rgbd[i][j][4],self.rgbd[i][j][5]])
 
         self.pcd = np.array(self.pcd)
-        rotate = np.array([[0,1,0],[-1,0,0],[0,0,1]])
+        self.colors = np.array(self.colors)
+        
         for i in range(len(self.pcd)):
-            self.pcd[i] = np.matmul(self.inverse_matrix,self.pcd[i])[:3]
+            self.pcd[i] = np.matmul(self.inverse_matrix,np.hstack((self.pcd[i][:2]*self.pcd[i][2],self.pcd[i][2])))[:3]
+
+
 
     def visualize(self):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(self.pcd)
+        pcd.colors = o3d.utility.Vector3dVector(self.colors/255)
         o3d.io.write_point_cloud("./point_cloud.ply", pcd)
         o3d.visualization.draw_geometries([pcd])
 
