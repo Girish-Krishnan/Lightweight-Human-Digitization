@@ -21,8 +21,8 @@ class Camera:
             self.translation = (param["cam_"+str(self.index)+"_r"]["translation"])
             self.img_id = ""
             self.intrinsic_matrix = np.array([[self.focal_length[0],0,self.img_center[0]],[0,self.focal_length[1],self.img_center[1]],[0,0,1]])
-            self.identity_and_translation = np.array([[1,0,0,-self.translation[0]],[0,1,0,-self.translation[1]],[0,0,1,0]])
-            self.camera_matrix = np.matmul(np.matmul(self.intrinsic_matrix,self.rotation),self.identity_and_translation)
+            self.identity_and_translation = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0]])
+            self.camera_matrix = np.matmul(self.intrinsic_matrix,self.identity_and_translation)
             self.inverse_matrix = np.linalg.pinv(self.camera_matrix)
 
     def add_image(self,img_name):
@@ -30,7 +30,7 @@ class Camera:
         self.img_id = str(img_name) + "_0" + str(self.index)
         self.image = cv.imread('./data/THuman/captures_1024_1024/'+self.img_id+'.png')
         self.depth_map = np.load('./data/THuman/captures_1024_1024/'+self.img_id+'.npy')
-
+        
 
     def display(self):
         fig = plt.figure()
@@ -46,19 +46,20 @@ class Camera:
         
         self.colors = []
         self.pcd = []
-                
-        for i in range(len(self.depth_map)):
-            for j in range(len(self.depth_map[i])):
-                if self.depth_map[i][j] != 0:
-                    self.pcd.append([i,j,self.depth_map[i][j]])
-                    self.colors.append([self.image[i][j][2],self.image[i][j][1],self.image[i][j][0]])
 
-        self.pcd = np.array(self.pcd)
+        x = [[i] for i in range(len(self.depth_map))]
+        y = [i for i in range(len(self.depth_map))]
+        z = np.array([y for i in range(len(self.depth_map))]).flatten()
+        q = np.hstack(tuple(np.array([x for i in range(len(self.depth_map))]))).flatten()
+
+        self.pcd = [[z[d],q[d],self.depth_map[z[d]][q[d]]] for d in range(len(z)) if self.depth_map[z[d]][q[d]] != 0]
+        self.colors = [[self.image[z[d]][q[d]][2],self.image[z[d]][q[d]][1],self.image[z[d]][q[d]][0]] for d in range(len(z)) if self.depth_map[z[d]][q[d]] != 0]       
         
+        self.pcd = np.array(self.pcd)
         self.colors = np.array(self.colors)
         
         for i in range(len(self.pcd)):
-            self.pcd[i] = np.matmul(self.inverse_matrix,np.hstack((self.pcd[i][:2]*self.pcd[i][2],self.pcd[i][2])))[:3]
+            self.pcd[i] = np.matmul(self.inverse_matrix,np.hstack((self.pcd[i][:2]*self.pcd[i][2],self.pcd[i][2])))[0:3]
 
     def translate_point_cloud(self,vector):
         for i in range(len(self.pcd)):
@@ -95,27 +96,28 @@ class Combiner:
         self.c3.add_image(image_name)
 
     def add(self):
-        rotate_0 = np.array([[0,1,0],[-1,0,0],[0,0,1]])
-        rotate_1 = np.array([[1,0,0],[0,0,-1],[0,-1,0]])
-        rotate_2 = np.array([[0,-1,0],[1,0,0],[0,0,1]])
-        rotate_3 = np.array([[1,0,0],[0,0,1],[0,1,0]])
         
-        
+        rotate_0 = np.transpose(np.matmul(np.array([[0,1,0],[-1,0,0],[0,0,-1]]),np.transpose(self.c0.rotation)))
+        rotate_1 = np.transpose(np.matmul(np.array([[0,1,0],[-1,0,0],[0,0,-1]]),np.transpose(self.c1.rotation)))
+        rotate_2 = np.transpose(np.matmul(np.array([[0,1,0],[-1,0,0],[0,0,-1]]),np.transpose(self.c2.rotation)))
+        rotate_3 = np.transpose(np.matmul(np.array([[0,1,0],[-1,0,0],[0,0,-1]]),np.transpose(self.c3.rotation)))
+
         self.c0.point_cloud()
         self.c0.rotate_point_cloud(rotate_0)
-        self.c0.translate_point_cloud(np.array([0,0,4]))
+        self.c0.translate_point_cloud(-np.array(self.c0.translation))
 
         
         self.c1.point_cloud()
         self.c1.rotate_point_cloud(rotate_1)
-        self.c1.translate_point_cloud(np.array([-0.4,0,2]))
+        self.c1.translate_point_cloud(-np.array(self.c1.translation))
 
         self.c2.point_cloud()
         self.c2.rotate_point_cloud(rotate_2)
+        self.c2.translate_point_cloud(-np.array(self.c2.translation))
 
         self.c3.point_cloud()
         self.c3.rotate_point_cloud(rotate_3)
-        self.c3.translate_point_cloud(np.array([0.4,0,2]))
+        self.c3.translate_point_cloud(-np.array(self.c3.translation))
         
         pcd_0 = o3d.geometry.PointCloud()
         pcd_0.points = o3d.utility.Vector3dVector(self.c0.pcd)
