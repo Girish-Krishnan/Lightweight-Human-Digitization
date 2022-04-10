@@ -3,7 +3,8 @@ IMPORTS
 """
 from DigitizeLib import Camera
 import numpy as np
-
+import open3d as o3d
+import time
 """
 CREATING CAMERA OBJECTS
 """
@@ -34,6 +35,10 @@ cam_1.visualize()
 cam_2.visualize()
 cam_3.visualize()
 
+print("started timing")
+start_time = time.time()
 combiner = Camera.Combiner()
 combiner.add_image(image_name)
 combiner.add()
+print("--- %s seconds ---" % (time.time() - start_time))
+combiner.visualize()
