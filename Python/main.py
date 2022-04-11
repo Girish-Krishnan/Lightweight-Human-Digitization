@@ -5,40 +5,45 @@ from DigitizeLib import Camera
 import numpy as np
 import open3d as o3d
 import time
+import json
+import os
+import cv2 as cv
+
+"""
+CONSTANTS + EXTRACTED DATA
+"""
+
+NUM_CAMS = 4 # Number of cameras
+param = json.load(open('./data/THuman/thuman_settings2.json'))
+CAM_DATA = [param["cam_"+str(i)+"_r"] for i in range(NUM_CAMS)] # camera data
+IMAGES = [cv.imread(os.path.join('./data/THuman/captures_1024_1024/',file)) for file in os.listdir("./data/THuman/captures_1024_1024/") if file[-4:] == ".png"] # images
+DEPTH_MAPS = [np.load(os.path.join('./data/THuman/captures_1024_1024/',file)) for file in os.listdir("./data/THuman/captures_1024_1024/") if file[-4:] == ".npy"] # depth maps
+NUM_IMAGES = len(IMAGES) // NUM_CAMS # number of images
+img_index = 0
+
 """
 CREATING CAMERA OBJECTS
 """
-
-cam_0 = Camera.Camera(0)
-cam_1 = Camera.Camera(1)
-cam_2 = Camera.Camera(2)
-cam_3 = Camera.Camera(3)
-
+cam = []
+for i in range(NUM_CAMS):
+    cam.append(Camera.Camera(CAM_DATA[i]["img_size"],CAM_DATA[i]["focal_length"],CAM_DATA[i]["img_center"],CAM_DATA[i]["rotation"],CAM_DATA[i]["translation"]))
 
 """
-READING IMAGE FILE AND DEPTH MAP AS INPUTS...
+GENERATING POINT CLOUDS
 """
+for img_num in range(NUM_IMAGES):
 
-image_name = "0350"
-cam_0.add_image(image_name)
-cam_1.add_image(image_name)
-cam_2.add_image(image_name)
-cam_3.add_image(image_name)
+    for i in range(NUM_CAMS):
+        cam[i].add_image(IMAGES[img_index+i],DEPTH_MAPS[img_index+i])
+        cam[i].point_cloud()
 
-cam_0.point_cloud()
-cam_1.point_cloud()
-cam_2.point_cloud()
-cam_3.point_cloud()
 
-cam_0.visualize()
-cam_1.visualize()
-cam_2.visualize()
-cam_3.visualize()
+    print("started timing") # to measure runtime for combiner
+    start_time = time.time()
+    combiner = Camera.Combiner(cam)
+    combiner.combine()
+    np.save("./Point_Clouds/point_cloud_"+str(img_num)+".npy",combiner.complete_pcd)
+    print("--- %s seconds ---" % (time.time() - start_time))
 
-print("started timing")
-start_time = time.time()
-combiner = Camera.Combiner()
-combiner.add_image(image_name)
-combiner.add()
-print("--- %s seconds ---" % (time.time() - start_time))
-combiner.visualize()
+    combiner.visualize()
+    img_index += NUM_CAMS
