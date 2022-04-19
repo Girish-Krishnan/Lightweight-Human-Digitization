@@ -6,21 +6,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import open3d as o3d
 
-"""
-CONSTANTS
-"""
-TRANSITION_MATRIX = np.array([[0,-1,0],[1,0,0],[0,0,-1]]) # transition matrix for transformation from camera to world frame
-
 class Camera:
 
     def __init__(self,img_size,focal_length,img_center,rotation,translation):
         self.rotation = np.array(rotation)
         self.translation = np.array(translation)
         self.img_id = ""         
-        self.intrinsic_matrix = np.array([[focal_length[0],0,img_center[0]],[0,focal_length[1],img_center[1]],[0,0,1]])
-        self.identity = np.hstack((np.eye(3),np.zeros((3,1))))
-        self.camera_matrix = np.matmul(self.intrinsic_matrix,self.identity)
-        self.inverse_matrix = np.linalg.pinv(self.camera_matrix)
+        self.intrinsic_matrix = np.array([[0,focal_length[0],-img_center[0]],[-focal_length[1],0,-img_center[1]],[0,0,-1]])
+        self.inverse_matrix = np.linalg.inv(self.intrinsic_matrix)
+      
 
     def add_image(self,image,depth_map):
         self.image = image
@@ -62,7 +56,7 @@ class Combiner:
     def combine(self):
         rotate = []
         for i in range(len(self.cam_array)):
-            rotate.append(np.matmul(self.cam_array[i].rotation,TRANSITION_MATRIX))
+            rotate.append(self.cam_array[i].rotation)
             self.cam_array[i].rotate_point_cloud(rotate[i])
             self.cam_array[i].translate_point_cloud(-self.cam_array[i].translation)
 

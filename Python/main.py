@@ -12,14 +12,16 @@ import cv2 as cv
 """
 CONSTANTS + EXTRACTED DATA
 """
-
+IMAGES_PATH = './data/THuman/captures_1024_1024/'
+SETTINGS_PATH = './data/THuman/thuman_settings2.json'
 NUM_CAMS = 4 # Number of cameras
-param = json.load(open('./data/THuman/thuman_settings2.json'))
-CAM_DATA = [param["cam_"+str(i)+"_r"] for i in range(NUM_CAMS)] # camera data
-IMAGES = [cv.imread(os.path.join('./data/THuman/captures_1024_1024/',file)) for file in os.listdir("./data/THuman/captures_1024_1024/") if file[-4:] == ".png"] # images
-DEPTH_MAPS = [np.load(os.path.join('./data/THuman/captures_1024_1024/',file)) for file in os.listdir("./data/THuman/captures_1024_1024/") if file[-4:] == ".npy"] # depth maps
+param = json.load(open(SETTINGS_PATH))
+CAM_DATA = [param[cam] for cam in param] # camera data
+IMAGES = [cv.imread(os.path.join(IMAGES_PATH,file)) for file in os.listdir(IMAGES_PATH) if file[-4:] == ".png"] # images
+DEPTH_MAPS = [np.load(os.path.join(IMAGES_PATH,file)) for file in os.listdir(IMAGES_PATH) if file[-4:] == ".npy"] # depth maps
 NUM_IMAGES = len(IMAGES) // NUM_CAMS # number of images
 img_index = 0
+
 
 """
 CREATING CAMERA OBJECTS
@@ -42,8 +44,7 @@ for img_num in range(NUM_IMAGES):
     start_time = time.time()
     combiner = Camera.Combiner(cam)
     combiner.combine()
-    np.save("./Point_Clouds/point_cloud_"+str(img_num)+".npy",combiner.complete_pcd)
     print("--- %s seconds ---" % (time.time() - start_time))
-
+    np.save("./Point_Clouds/point_cloud_"+str(img_num)+".npy",combiner.complete_pcd)
     combiner.visualize()
     img_index += NUM_CAMS
