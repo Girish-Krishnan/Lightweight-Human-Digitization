@@ -11,12 +11,6 @@ config_D415.enable_device('828612060381')
 config_D415.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
 config_D415.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
 
-# pipeline_D435 = rs.pipeline()
-# config_D435 = rs.config()
-# config_D415.enable_device('819312073170')
-# config_D415.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-# config_D415.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
-
 pipeline_D415.start(config_D415)
 
 # Defining the dimensions of checkerboard
@@ -25,11 +19,11 @@ criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 # Creating vector to store vectors of 3D points for each checkerboard image
 objpoints_1 = []
-objpoints_2 = []
+objpoints_3d = []
 
 # Creating vector to store vectors of 2D points for each checkerboard image
 imgpoints_1 = [] 
-imgpoints_2 = []
+
 
 # Defining the world coordinates for 3D points
 objp = np.zeros((1, CHECKERBOARD[0] * CHECKERBOARD[1], 3), np.float32)
@@ -42,22 +36,22 @@ prev_img_shape = None
 cap_1 = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 image_count_1 = 0
 
-cap_2 = cv2.VideoCapture(1, cv2.CAP_DSHOW)
-image_count_2 = 0
 
 
-while image_count_1 < 12 and image_count_2 < 12:
+while image_count_1 < 12:
     frames_D415 = pipeline_D415.wait_for_frames()
     color_D415 = frames_D415.get_color_frame()
-    if not color_D415: continue
+    depth_D415 = frames_D415.get_depth_frame()
+
+    if not color_D415 or not depth_D415: continue
 
     color_img_D415 = np.asanyarray(color_D415.get_data())
+    depth_img_D415 = np.asanyarray(depth_D415.get_data())
     
     cv2.imshow('RealSense_D415', color_img_D415)
     
     c = cv2.waitKey(1)
     if c == 32:
-        image_count_1 +=1
         image_count_1 +=1
         cv2.imwrite('images_1/{}.jpg'.format(image_count_1), color_img_D415)
     
@@ -89,9 +83,6 @@ for fname in images_1:
 
         # Draw and display the corners
         img_1 = cv2.drawChessboardCorners(img_1, CHECKERBOARD, corners2, ret)
-    
-    cv2.imshow('img',img_1)
-    cv2.waitKey(0)
 
 cv2.destroyAllWindows()
 
@@ -115,9 +106,6 @@ print("tvecs : \n")
 print(tvecs_1)
 print("Rotation matrix : \n")
 print(cv2.Rodrigues(rvecs_1[0])[0])
-
-print("Using cv2.solvePnP : \n")
-print(cv2.solvePnP(objpoints_1, imgpoints_1 , mtx_1, dist_1))
 
 data = {
     'mtx_1': mtx_1,
