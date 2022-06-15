@@ -42,10 +42,12 @@ class Camera:
         self.pcd = np.matmul(rotate,self.pcd.T).T
 
     def visualize(self):
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(self.pcd)
-        pcd.colors = o3d.utility.Vector3dVector(self.colors/255)
-        o3d.visualization.draw_geometries([pcd])
+        self.pcd_o3d = o3d.geometry.PointCloud()
+        self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
+        self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
+        points = np.asarray(self.pcd_o3d.points)
+        #pcd = pcd.select_by_index(np.where(points[:,1] > 0)[0])
+        o3d.visualization.draw_geometries([self.pcd_o3d])
 
 
 class Combiner:
