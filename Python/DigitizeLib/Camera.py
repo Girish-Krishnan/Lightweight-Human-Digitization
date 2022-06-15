@@ -46,7 +46,7 @@ class Camera:
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
         points = np.asarray(self.pcd_o3d.points)
-        #pcd = pcd.select_by_index(np.where(points[:,1] > 0)[0])
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -1000)[0])
         o3d.visualization.draw_geometries([self.pcd_o3d])
 
 
@@ -72,4 +72,17 @@ class Combiner:
         pcd_o3d = o3d.geometry.PointCloud()
         pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
+        points = np.asarray(pcd_o3d.points)
+        pcd_o3d = pcd_o3d.select_by_index(np.where(points[:,2] > -1000)[0])
+        points = np.asarray(pcd_o3d.points)
+        pcd_o3d = pcd_o3d.select_by_index(np.where(points[:,0] > -1000)[0]) 
         o3d.visualization.draw_geometries([pcd_o3d])
+
+        viewer = o3d.visualization.Visualizer()
+        viewer.create_window()
+        viewer.add_geometry(pcd_o3d)
+        opt = viewer.get_render_option()
+        opt.show_coordinate_frame = True
+        opt.background_color = np.asarray([0.5, 0.5, 0.5])
+        viewer.run()
+        viewer.destroy_window()

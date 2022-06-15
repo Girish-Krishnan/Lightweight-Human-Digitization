@@ -12,8 +12,8 @@ config_D415.enable_device('828612060381')
 config_D415.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
 config_D415.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
 
-cfg_D435 = pipeline_D435.start()
-cfg_D415 = pipeline_D415.start()
+cfg_D435 = pipeline_D435.start(config_D435)
+cfg_D415 = pipeline_D415.start(config_D415)
 
 profile_D415 = cfg_D415.get_stream(rs.stream.depth)
 profile_D435 = cfg_D435.get_stream(rs.stream.depth)

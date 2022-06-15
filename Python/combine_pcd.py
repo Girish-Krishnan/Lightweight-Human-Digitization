@@ -91,6 +91,7 @@ try:
             cv.imwrite("my_image_2.jpg",color_image_2)
             np.save("my_depth_2.npy", depth_image_2)
             print("Save")
+            cv.destroyAllWindows()
             break
 
 
@@ -112,8 +113,8 @@ for i in range(2):
 cam[0].add_image(cv.imread("my_image_1.jpg"), np.load("my_depth_1.npy"))
 cam[1].add_image(cv.imread("my_image_2.jpg"), np.load("my_depth_2.npy"))
 
-cam[0].display()
-cam[1].display()
+#cam[0].display()
+#cam[1].display()
 
 cam[0].point_cloud()
 cam[1].point_cloud()
@@ -164,3 +165,14 @@ print(reg_p2p)
 print("Transformation is:")
 print(reg_p2p.transformation)
 draw_registration_result(source, target, reg_p2p.transformation)
+
+rotation_matrix = np.asarray(reg_p2p.transformation[:3, :3])
+translation_vector = np.asarray(reg_p2p.transformation[:3, 3])
+
+cam[1].rotation = np.linalg.inv(rotation_matrix)
+cam[1].translation = -translation_vector
+
+combiner = Camera.Combiner(cam)
+combiner.combine()
+np.save("./Point_Clouds/point_cloud_combined_two_cams.npy",combiner.complete_pcd)
+combiner.visualize()
