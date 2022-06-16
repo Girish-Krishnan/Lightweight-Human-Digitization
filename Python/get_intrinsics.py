@@ -1,3 +1,7 @@
+"""
+To obtain camera's intrinsic parameters from factory
+"""
+
 import pyrealsense2 as rs
 
 pipeline_D435 = rs.pipeline()

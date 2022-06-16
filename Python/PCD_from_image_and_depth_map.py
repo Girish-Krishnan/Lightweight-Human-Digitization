@@ -1,7 +1,7 @@
 """
 IMPORTS
 """
-from DigitizeLib import Camera
+from Camera import Camera
 import numpy as np
 import open3d as o3d
 import time

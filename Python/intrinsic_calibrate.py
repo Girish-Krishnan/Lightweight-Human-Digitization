@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+"""
+To find the intrinsic parameters for the connected Realsense camera
+"""
 
 import cv2
 import numpy as np

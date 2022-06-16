@@ -1,7 +1,0 @@
-setup.py
-DigitizeLib/Camera.py
-DigitizeLib/__init__.py
-DigitizeLib.egg-info/PKG-INFO
-DigitizeLib.egg-info/SOURCES.txt
-DigitizeLib.egg-info/dependency_links.txt
-DigitizeLib.egg-info/top_level.txt

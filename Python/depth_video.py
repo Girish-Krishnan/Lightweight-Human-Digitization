@@ -1,3 +1,7 @@
+"""
+To capture 100 frames of video and depth data from the connected camera and store it in a .bag file, test.bag
+"""
+
 import pyrealsense2 as rs
 
 num_frames = 100
@@ -26,7 +30,7 @@ if device_product_line == 'L500':
     config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
 else:
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-#config.enable_record_to_file('./test.bag')
+config.enable_record_to_file('./test.bag')
 
 profile = pipeline.start(config)
 
