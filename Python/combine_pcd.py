@@ -5,6 +5,8 @@ from Camera import Camera
 import numpy as np
 import json
 import cv2 as cv
+import open3d as o3d
+import copy
 
 """
 GET CALIBRATION DATA
@@ -28,8 +30,19 @@ cam[1].add_image(cv.imread("./sample_images/D435_sample.jpg"), np.load("./sample
 cam[0].point_cloud()
 cam[1].point_cloud()
 
+cam[0].rotate_point_cloud(np.array([[-1,0,0],[0,-1,0],[0,0,1]]))
+cam[1].rotate_point_cloud(np.array([[-1,0,0],[0,-1,0],[0,0,1]]))
 
 combiner = Camera.Combiner(cam)
 combiner.combine()
 np.save("./data/Point_Clouds/point_cloud_combined.npy",combiner.complete_pcd)
 combiner.visualize()
+
+# viewer = o3d.visualization.Visualizer()
+# viewer.create_window()
+# viewer.add_geometry(combiner.pcd_o3d)
+# opt = viewer.get_render_option()
+# opt.show_coordinate_frame = True
+# opt.background_color = np.asarray([0.5, 0.5, 0.5])
+# viewer.run()
+# viewer.destroy_window()

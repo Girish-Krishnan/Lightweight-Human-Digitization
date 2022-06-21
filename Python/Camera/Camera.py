@@ -14,6 +14,7 @@ class Camera:
         self.img_id = ""         
         self.intrinsic_matrix = np.array([[0,focal_length[0],-img_center[0]],[-focal_length[1],0,-img_center[1]],[0,0,-1]])
         self.inverse_matrix = np.linalg.inv(self.intrinsic_matrix)
+        self.extrinsic_matrix = np.array([[self.rotation[0,0],self.rotation[0,1],self.rotation[0,2],self.translation[0]],[self.rotation[1,0],self.rotation[1,1],self.rotation[1,2],self.translation[1]],[self.rotation[2,0],self.rotation[2,1],self.rotation[2,2],self.translation[2]],[0,0,0,1]])
       
 
     def add_image(self,image,depth_map):
@@ -71,11 +72,11 @@ class Combiner:
 
     def visualize(self):
 
-        pcd_o3d = o3d.geometry.PointCloud()
-        pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
-        pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
-        points = np.asarray(pcd_o3d.points)
-        pcd_o3d = pcd_o3d.select_by_index(np.where(points[:,2] > -1000)[0])
-        points = np.asarray(pcd_o3d.points)
-        pcd_o3d = pcd_o3d.select_by_index(np.where(points[:,0] > -1000)[0]) 
-        o3d.visualization.draw_geometries([pcd_o3d])
+        self.pcd_o3d = o3d.geometry.PointCloud()
+        self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
+        self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
+        points = np.asarray(self.pcd_o3d.points)
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] > -1000)[0])
+        points = np.asarray(self.pcd_o3d.points)
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -1000)[0]) 
+        o3d.visualization.draw_geometries([self.pcd_o3d])

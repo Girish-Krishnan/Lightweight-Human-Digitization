@@ -80,7 +80,7 @@ try:
             cv.imwrite("calibration_images/D435/" + str(image_count) + ".jpg",color_image_2)
             print("Saved image " + str(image_count))
             
-            if image_count == 12:
+            if image_count == 30:
                 break
 
 

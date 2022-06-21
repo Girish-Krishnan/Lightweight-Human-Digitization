@@ -12,6 +12,7 @@ import json
 
 # Defining the dimensions of checkerboard
 CHECKERBOARD = (6,9)
+INCHES_PER_METER = 39.3701
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 # Creating vector to store vectors of 3D points for each checkerboard image
@@ -71,13 +72,13 @@ for i in range(len(images_1)):
         imgpoints_2.append(corners_2)
 
         # Draw and display the corners
-        img_1 = cv2.drawChessboardCorners(img_1, CHECKERBOARD, corners_1, ret_1)
-        img_2 = cv2.drawChessboardCorners(img_2, CHECKERBOARD, corners_2, ret_2)
-        images = np.hstack((img_1, img_2))
+        #img_1 = cv2.drawChessboardCorners(img_1, CHECKERBOARD, corners_1, ret_1)
+        #img_2 = cv2.drawChessboardCorners(img_2, CHECKERBOARD, corners_2, ret_2)
+        #images = np.hstack((img_1, img_2))
     
-        cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
-        cv2.imshow('RealSense', images)
-        cv2.waitKey(0)
+        #cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
+        #cv2.imshow('RealSense', images)
+        #cv2.waitKey(0)
 
 
 cv2.destroyAllWindows()
@@ -93,6 +94,8 @@ ret_2, mtx_2, dist_2, rvecs_2, tvecs_2 = cv2.calibrateCamera(objpoints_2, imgpoi
 
 rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints_1,imgpoints_1,imgpoints_2,mtx_1,dist_1,mtx_2,dist_2,gray_1.shape[::-1],criteria)
 
+#print(cv2.stereoCalibrate(objpoints_1,imgpoints_1,imgpoints_2,mtx_1,dist_1,mtx_2,dist_2,gray_1.shape[::-1],criteria))
+
 print("Stereo Calibration RMS: ", rms)
 
 with open("data/THuman/calibration_data.json", 'r') as f:
@@ -105,8 +108,16 @@ with open("data/THuman/calibration_data.json", 'r') as f:
 
     data["cam_D435"]["focal_length"] = [mtx_2[0][0], mtx_2[1][1]]
     data["cam_D435"]["img_center"] = [mtx_2[0][2], mtx_2[1][2]]
-    data["cam_D435"]["rotation"] = np.linalg.inv(R).tolist()
-    data["cam_D435"]["translation"] = [-T[0][0], -T[1][0], -T[2][0]]
+    data["cam_D435"]["rotation"] = R.tolist()
+    data["cam_D435"]["translation"] = [INCHES_PER_METER*T[0][0], INCHES_PER_METER*T[1][0], T[2][0]]
 
     json.dump(data, open("data/THuman/calibration_data.json", "w"), indent = 4)
+
+with open("data/THuman/params.json", 'r') as f:
+    data = json.load(f)
+    data["cam_D435"]["rotation"] = R.tolist()
+    data["cam_D435"]["translation"] = [INCHES_PER_METER*T[0][0], INCHES_PER_METER*T[1][0], T[2][0]]
+
+    json.dump(data, open("data/THuman/params.json", "w"), indent = 4)
+
 
