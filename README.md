@@ -4,7 +4,7 @@ _UC San Diego_
 ___
 # ECE SRIP 2022
 
-**PCD_from_image_and_depth_map.py** reads tge sample images and depth maps from the *data* directory and converts them into point clouds representing a 3D human model.
+**PCD_from_image_and_depth_map.py** reads the sample images and depth maps from the *data* directory and converts them into point clouds representing a 3D human model.
 
 The **sample_images** directory contains 1 sample image and its corresponding depth map taken from the D415 and the D435 camera. This is used to verify that the camera calibration process works correctly.
 
@@ -20,3 +20,4 @@ The **Camera** directory contains the classes that facilitate 3D reconstruction.
 
 **get_intrinsics.py** helps obtain the intrinsic parameters defined by the Intel Realsense SDK.
 
+**scalable_capturing.py** detects any connected Intel RealSense Cameras and captures a color image and corresponding depth map from each camera (and this works for any arbitrary number of cameras). The images and depth maps are saved in a directory identified by the serial number for the camera.

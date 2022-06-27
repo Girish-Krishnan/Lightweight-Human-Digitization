@@ -13,7 +13,7 @@ import json
 # Defining the dimensions of checkerboard
 CHECKERBOARD = (6,9)
 CHECKERBOARD_SIZE = 20  # units: millimeters
-IMAGE_TYPE = ".jpg"
+IMAGE_TYPE = ".png"
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 # Creating vector to store vectors of 3D points for each checkerboard image
@@ -99,26 +99,30 @@ with open("data/THuman/calibration_data.json", 'r') as f:
     mtx_1 = mtx_1.tolist()
     mtx_2 = mtx_2.tolist()
     A = np.array([[-1,0,0],[0,-1,0],[0,0,1]])
-    T = (np.matmul(A.T,np.matmul(R.T,-T))).tolist()
-    #T = T.tolist()
+    #I = np.eye(3)
+    T = (np.matmul(R,np.matmul(A,-T))).tolist()
+    
+    T = [T[0][0],T[1][0],T[2][0]]
+    T = [CHECKERBOARD_SIZE*T[0], CHECKERBOARD_SIZE*T[1],CHECKERBOARD_SIZE*T[2]]
+
     data["cam_D415"]["img_size"] = [gray_1.shape[::-1][0], gray_1.shape[::-1][1]]
     data["cam_D415"]["focal_length"] = [mtx_1[0][0], mtx_1[1][1]]
     data["cam_D415"]["img_center"] = [mtx_1[0][2], mtx_1[1][2]]
-
 
     data["cam_D435"]["img_size"] = [gray_2.shape[::-1][0], gray_2.shape[::-1][1]]
     data["cam_D435"]["focal_length"] = [mtx_2[0][0], mtx_2[1][1]]
     data["cam_D435"]["img_center"] = [mtx_2[0][2], mtx_2[1][2]]
     data["cam_D435"]["rotation"] = R.tolist()
-    data["cam_D435"]["translation"] = [CHECKERBOARD_SIZE*T[0][0], CHECKERBOARD_SIZE*T[1][0], CHECKERBOARD_SIZE*T[2][0]]
+    data["cam_D435"]["translation"] = T
 
     json.dump(data, open("data/THuman/calibration_data.json", "w"), indent = 4)
 
 with open("data/THuman/params.json", 'r') as f:
     data = json.load(f)
+
     data["cam_D435"]["img_size"] = [gray_2.shape[::-1][0], gray_2.shape[::-1][1]]
     data["cam_D435"]["rotation"] = R.tolist()
-    data["cam_D435"]["translation"] = [CHECKERBOARD_SIZE*T[0][0], CHECKERBOARD_SIZE*T[1][0], CHECKERBOARD_SIZE*T[2][0]]
+    data["cam_D435"]["translation"] = T
 
     json.dump(data, open("data/THuman/params.json", "w"), indent = 4)
 
