@@ -3,7 +3,6 @@ IMPORTS
 """
 from Camera import Camera
 import numpy as np
-import open3d as o3d
 import time
 import json
 import os
@@ -45,6 +44,6 @@ for img_num in range(NUM_IMAGES):
     combiner = Camera.Combiner(cam)
     combiner.combine()
     print("--- %s seconds ---" % (time.time() - start_time))
-    np.save("./Point_Clouds/point_cloud_"+str(img_num)+".npy",combiner.complete_pcd)
+    np.save("./data/Point_Clouds/point_cloud_"+str(img_num)+".npy",combiner.complete_pcd)
     combiner.visualize()
     img_index += NUM_CAMS
