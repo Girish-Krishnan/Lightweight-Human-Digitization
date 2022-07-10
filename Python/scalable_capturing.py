@@ -2,6 +2,7 @@ import pyrealsense2 as rs
 import os
 import cv2 as cv
 import numpy as np
+import json
 
 serial_numbers = []
 pipelines = []
@@ -21,9 +22,13 @@ if len(ctx.devices) > 0:
         pipelines[device_num].start(configs[device_num])
 
         if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
-          # Create a new directory because it does not exist 
             os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         
+        if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images"):
+            os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images")
+        if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images"):
+            os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images")
+
 else:
 
     print("No Intel Device connected")
@@ -54,7 +59,6 @@ try:
             color_images[i] = np.asanyarray(color_frame.get_data())
             depth_images[i] = np.asanyarray(depth_frame.get_data())
 
-        
         # Stack all images horizontally
         images = np.hstack(tuple(color_images))
 
@@ -65,11 +69,10 @@ try:
         if ch==32:
 
             for i in range(len(serial_numbers)):
-                cv.imwrite('./' + serial_numbers[i] + '/image.jpg', color_images[i])
-                np.save('./' + serial_numbers[i] + '/depth_map.npy', depth_images[i])
+                cv.imwrite('./' + serial_numbers[i] + '/sample_images/image.jpg', color_images[i])
+                np.save('./' + serial_numbers[i] + '/sample_images/depth_map.npy', depth_images[i])
         
             break
-
 
 
 finally:
@@ -80,3 +83,13 @@ finally:
 
     cv.destroyAllWindows()
 
+
+# ######################################################################################################################
+
+with(open("./configuration_parameters.json")) as f:
+    configuration_parameters = json.load(f)
+    for i in serial_numbers:
+        configuration_parameters["cams"][i] = {}
+
+    json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)
+    f.close()
