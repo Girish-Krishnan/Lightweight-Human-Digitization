@@ -32,11 +32,86 @@ objp = np.zeros((CHECKERBOARD[0] * CHECKERBOARD[1], 3), np.float32)
 objp[:,:2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2)
 objp = CHECKERBOARD_SIZE * objp
 
+# Exception handling when no camera images were found:
+
+if NUM_CAMS == 0:
+    print("No camera images found. Please check the directory.")
+    exit(-1)
+
 # Extracting path of individual image stored in a given directory
 
 images = []
 for i in range(NUM_CAMS):
     images.append(glob.glob("./" + serial_numbers[i] + "/calibration_images" + "/*" + IMAGE_TYPE))
+
+# Exception handling when only one camera was detected - only intrinsic calibration is done.
+
+if NUM_CAMS == 1:
+    print("Only one camera detected. Performing only intrinsic cailbration.")
+    images = images[0]
+    
+    # Creating vector to store vectors of 3D points for each checkerboard image
+    objpoints = []
+
+    # Creating vector to store vectors of 2D points for each checkerboard image
+
+    imgpoints = []
+
+    for fname in images:
+        img = cv2.imread(fname)
+        gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+        # Find the chess board corners
+        # If desired number of corners are found in the image then ret = true
+        ret, corners = cv2.findChessboardCorners(gray, CHECKERBOARD, cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_FAST_CHECK + cv2.CALIB_CB_NORMALIZE_IMAGE)
+        #print(corners)
+        #print(ret)
+        """
+        If desired number of corner are detected,
+        we refine the pixel coordinates and display 
+        them on the images of checker board
+        """
+        if ret == True:
+            objpoints.append(objp)
+            # refining pixel coordinates for given 2d points.
+            corners2 = cv2.cornerSubPix(gray, corners, (11,11),(-1,-1), criteria)
+            
+            imgpoints.append(corners2)
+
+            # Draw and display the corners
+            #img = cv2.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
+        
+        #cv2.imshow('img',img)
+        #cv2.waitKey(0)
+
+    #cv2.destroyAllWindows()
+
+    h,w = img.shape[:2]
+
+    """
+    Performing intrinsic camera calibration by 
+    passing the value of known 3D points (objpoints)
+    and corresponding pixel coordinates of the 
+    detected corners (imgpoints)
+    """
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+
+    print("Camera matrix : \n")
+    print(mtx)
+    print("dist : \n")
+    print(dist)
+    print("rvecs : \n")
+    print(rvecs)
+    print("tvecs : \n")
+    print(tvecs)
+
+    configuration_parameters["cams"][serial_numbers[0]]["intrinsics"] = {}
+    configuration_parameters["cams"][serial_numbers[0]]["intrinsics"]["img_size"] = [gray.shape[::-1][0], gray.shape[::-1][1]]
+    configuration_parameters["cams"][serial_numbers[0]]["intrinsics"]["focal_length"] = [mtx[0][0], mtx[1][1]]
+    configuration_parameters["cams"][serial_numbers[0]]["intrinsics"]["img_center"] = [mtx[0][2], mtx[1][2]]
+    json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)
+
+
+
 
 image_pairs = combinations(range(NUM_CAMS),2) # finding all distinct pairs of cameras
 
@@ -133,17 +208,19 @@ for pair in image_pairs:
     T = T.tolist()
     T = [T[0][0],T[1][0],T[2][0]]
 
+    configuration_parameters["cams"][serial_numbers[x]]["intrinsics"] = {}
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]] = {}
-    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["img_size"] = [gray_1.shape[::-1][0], gray_1.shape[::-1][1]]
-    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["focal_length"] = [mtx_1[0][0], mtx_1[1][1]]
-    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["img_center"] = [mtx_1[0][2], mtx_1[1][2]]
+    configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["img_size"] = [gray_1.shape[::-1][0], gray_1.shape[::-1][1]]
+    configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["focal_length"] = [mtx_1[0][0], mtx_1[1][1]]
+    configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["img_center"] = [mtx_1[0][2], mtx_1[1][2]]
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["rotation"] = np.eye(3).tolist()
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["translation"] =  [0,0,0]
 
+    configuration_parameters["cams"][serial_numbers[y]]["intrinsics"] = {}
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]] = {}
-    configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["img_size"] = [gray_2.shape[::-1][0], gray_2.shape[::-1][1]]
-    configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["focal_length"] = [mtx_2[0][0], mtx_2[1][1]]
-    configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["img_center"] = [mtx_2[0][2], mtx_2[1][2]]
+    configuration_parameters["cams"][serial_numbers[y]]["intrinsics"]["img_size"] = [gray_2.shape[::-1][0], gray_2.shape[::-1][1]]
+    configuration_parameters["cams"][serial_numbers[y]]["intrinsics"]["focal_length"] = [mtx_2[0][0], mtx_2[1][1]]
+    configuration_parameters["cams"][serial_numbers[y]]["intrinsics"]["img_center"] = [mtx_2[0][2], mtx_2[1][2]]
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = R.tolist()
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["translation"] = T
 
