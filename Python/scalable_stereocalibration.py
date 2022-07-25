@@ -78,12 +78,12 @@ if NUM_CAMS == 1:
             imgpoints.append(corners2)
 
             # Draw and display the corners
-            #img = cv2.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
+            img = cv2.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
         
-        #cv2.imshow('img',img)
-        #cv2.waitKey(0)
+        cv2.imshow('img',img)
+        cv2.waitKey(0)
 
-    #cv2.destroyAllWindows()
+    cv2.destroyAllWindows()
 
     h,w = img.shape[:2]
 
@@ -109,9 +109,7 @@ if NUM_CAMS == 1:
     configuration_parameters["cams"][serial_numbers[0]]["intrinsics"]["focal_length"] = [mtx[0][0], mtx[1][1]]
     configuration_parameters["cams"][serial_numbers[0]]["intrinsics"]["img_center"] = [mtx[0][2], mtx[1][2]]
     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)
-
-
-
+    exit(-1)
 
 image_pairs = combinations(range(NUM_CAMS),2) # finding all distinct pairs of cameras
 
@@ -166,16 +164,16 @@ for pair in image_pairs:
             imgpoints_2.append(corners_2)
 
             # Draw and display the corners
-            # img_1 = cv2.drawChessboardCorners(img_1, CHECKERBOARD, corners_1, ret_1)
-            # img_2 = cv2.drawChessboardCorners(img_2, CHECKERBOARD, corners_2, ret_2)
-            # images = np.hstack((img_1, img_2))
+            img_1 = cv2.drawChessboardCorners(img_1, CHECKERBOARD, corners_1, ret_1)
+            img_2 = cv2.drawChessboardCorners(img_2, CHECKERBOARD, corners_2, ret_2)
+            images_display = np.hstack((img_1, img_2))
         
-            # cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
-            # cv2.imshow('RealSense', images)
-            # cv2.waitKey(0)
+            cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
+            cv2.imshow('RealSense', images_display)
+            cv2.waitKey(0)
 
 
-    #cv2.destroyAllWindows()
+    cv2.destroyAllWindows()
 
     if success_count < THRESHOLD:
         print("Cams " + str(x) + " and " + str(y) + " do not have enough common images. Skipping calibration.")

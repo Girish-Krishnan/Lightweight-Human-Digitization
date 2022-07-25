@@ -33,8 +33,8 @@ cam[1].point_cloud()
 cam[0].rotate_point_cloud(np.array([[-1,0,0],[0,-1,0],[0,0,1]]))
 cam[1].rotate_point_cloud(np.array([[-1,0,0],[0,-1,0],[0,0,1]]))
 
-# cam[0].visualize()
-# cam[1].visualize()
+cam[0].visualize()
+cam[1].visualize()
 
 # def draw_registration_result(source, target, transformation):
 #     source_temp = copy.deepcopy(source)

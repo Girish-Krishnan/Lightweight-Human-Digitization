@@ -11,8 +11,8 @@ import glob
 import json
 
 # Defining the dimensions of checkerboard
-CHECKERBOARD = (6,9)
-CHECKERBOARD_SIZE = 20  # units: millimeters
+CHECKERBOARD = (8,11)
+CHECKERBOARD_SIZE = 60  # units: millimeters
 IMAGE_TYPE = ".jpg"
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -127,13 +127,5 @@ with open("data/THuman/calibration_data.json", 'r') as f:
 
     json.dump(data, open("data/THuman/calibration_data.json", "w"), indent = 4)
 
-with open("data/THuman/params.json", 'r') as f:
-    data = json.load(f)
-
-    data["cam_D435"]["img_size"] = [gray_2.shape[::-1][0], gray_2.shape[::-1][1]]
-    data["cam_D435"]["rotation"] = R.tolist()
-    data["cam_D435"]["translation"] = T
-
-    json.dump(data, open("data/THuman/params.json", "w"), indent = 4)
 
 

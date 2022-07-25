@@ -23,8 +23,8 @@ if len(ctx.devices) > 0:
         pipelines.append(rs.pipeline())
         configs.append(rs.config())
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-        configs[device_num].enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-        configs[device_num].enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+        configs[device_num].enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+        configs[device_num].enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         pipelines[device_num].start(configs[device_num])
 
         if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
