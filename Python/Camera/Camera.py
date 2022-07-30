@@ -75,6 +75,7 @@ class Combiner:
         self.pcd_o3d = o3d.geometry.PointCloud()
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
+        o3d.io.write_point_cloud("./data.ply", self.pcd_o3d)
         # points = np.asarray(self.pcd_o3d.points)
         # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] > -1000)[0])
         # points = np.asarray(self.pcd_o3d.points)
