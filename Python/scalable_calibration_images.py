@@ -27,6 +27,23 @@ if len(ctx.devices) > 0:
         configs[device_num].enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         pipelines[device_num].start(configs[device_num])
 
+        profile = pipelines[device_num].get_active_profile()
+        color_profile = rs.video_stream_profile(profile.get_stream(rs.stream.color))
+        color_intrinsics = color_profile.get_intrinsics()
+        depth_profile = rs.video_stream_profile(profile.get_stream(rs.stream.depth))
+        depth_intrinsics = depth_profile.get_intrinsics()
+
+        s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
+        configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = [640, 480]
+        configuration_parameters["cams"][s_num]["intrinsics"]["color_focal_length"] = [color_intrinsics.fx,
+                                                                                       color_intrinsics.fy]
+        configuration_parameters["cams"][s_num]["intrinsics"]["color_img_center"] = [color_intrinsics.ppx,
+                                                                                     color_intrinsics.ppy]
+        configuration_parameters["cams"][s_num]["intrinsics"]["depth_focal_length"] = [depth_intrinsics.fx,
+                                                                                       depth_intrinsics.fy]
+        configuration_parameters["cams"][s_num]["intrinsics"]["depth_img_center"] = [depth_intrinsics.ppx,
+                                                                                     depth_intrinsics.ppy]
+
         if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
           # Create a new directory because it does not exist 
             os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
