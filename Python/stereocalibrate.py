@@ -32,8 +32,8 @@ objp = CHECKERBOARD_SIZE * objp
 
 # Extracting path of individual image stored in a given directory
 
-images_1 = sorted(glob.glob('./calibration_images/D415/*' + IMAGE_TYPE))  # images from D415
-images_2 = sorted(glob.glob('./calibration_images/D435/*' + IMAGE_TYPE))  # images from D435
+images_1 = sorted(glob.glob('./calibration_images/D435/*' + IMAGE_TYPE))  # images from D415
+images_2 = sorted(glob.glob('./calibration_images/D415/*' + IMAGE_TYPE))  # images from D435
 
 for i in range(len(images_1)):
     img_1 = cv2.imread(images_1[i])
