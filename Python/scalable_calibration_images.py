@@ -34,15 +34,18 @@ if len(ctx.devices) > 0:
         depth_intrinsics = depth_profile.get_intrinsics()
 
         s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
+        configuration_parameters["cams"][s_num]["intrinsics"] = {}
         configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = [640, 480]
-        configuration_parameters["cams"][s_num]["intrinsics"]["color_focal_length"] = [color_intrinsics.fx,
+        configuration_parameters["cams"][s_num]["intrinsics"]["focal_length"] = [color_intrinsics.fx,
                                                                                        color_intrinsics.fy]
-        configuration_parameters["cams"][s_num]["intrinsics"]["color_img_center"] = [color_intrinsics.ppx,
+        configuration_parameters["cams"][s_num]["intrinsics"]["img_center"] = [color_intrinsics.ppx,
                                                                                      color_intrinsics.ppy]
         configuration_parameters["cams"][s_num]["intrinsics"]["depth_focal_length"] = [depth_intrinsics.fx,
                                                                                        depth_intrinsics.fy]
         configuration_parameters["cams"][s_num]["intrinsics"]["depth_img_center"] = [depth_intrinsics.ppx,
                                                                                      depth_intrinsics.ppy]
+        assert color_intrinsics.coeffs == [0.0, 0.0, 0.0, 0.0, 0.0]
+        assert depth_intrinsics.coeffs == [0.0, 0.0, 0.0, 0.0, 0.0]
 
         if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
           # Create a new directory because it does not exist 
@@ -53,7 +56,7 @@ if len(ctx.devices) > 0:
         if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images"):
             os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images")
 
-        
+    json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent=4)
 else:
 
     print("No Intel Device connected")
@@ -73,7 +76,7 @@ try:
     while True:
 
         for i in range(len(serial_numbers)):
-        
+
             frames = pipelines[i].wait_for_frames()
             color_frame = frames.get_color_frame()
             if not color_frame:
@@ -82,7 +85,7 @@ try:
             # Convert images to numpy arrays
             color_images[i] = np.asanyarray(color_frame.get_data())
 
-        
+
         # Stack all images horizontally
         images = np.hstack(tuple(color_images))
 
