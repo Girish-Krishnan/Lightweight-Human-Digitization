@@ -11,6 +11,7 @@ import glob
 import json
 from itertools import combinations
 import cv2.aruco as aruco
+from scipy.spatial.transform import Rotation
 
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
@@ -39,6 +40,7 @@ NUM_CALIB_IMGS = configuration_parameters["num_calibration_imgs"]
 CHECKERBOARD = (
 configuration_parameters["checkerboard_dimensions"][0], configuration_parameters["checkerboard_dimensions"][1])
 CHECKERBOARD_SIZE = configuration_parameters["checkerboard_size_mm"]  # units: millimeters
+CHECKERBOARD_SIZE *= 0.001
 IMAGE_TYPE = configuration_parameters["img_file_type"]
 NUM_CAMS = len(configuration_parameters["cams"])
 THRESHOLD = configuration_parameters["threshold"]
@@ -70,15 +72,15 @@ for pair in image_pairs:
     y = pair[1]
     common_img_count = 0  # the number of common images between the two cameras that contain the chessboard successfully detected
 
-    cam1_f = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["focal_length"]
-    cam1_c = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["img_center"]
+    cam1_f = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_focal_length"]
+    cam1_c = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_img_center"]
     cam1_mtx = np.array([
         [cam1_f[0], 0, cam1_c[0]],
         [0, cam1_f[1], cam1_c[1]],
         [0, 0, 1]
     ])
-    cam2_f = configuration_parameters["cams"][serial_numbers[y]]["intrinsics"]["focal_length"]
-    cam2_c = configuration_parameters["cams"][serial_numbers[y]]["intrinsics"]["img_center"]
+    cam2_f = configuration_parameters["cams"][serial_numbers[y]]["intrinsics"]["ir_focal_length"]
+    cam2_c = configuration_parameters["cams"][serial_numbers[y]]["intrinsics"]["ir_img_center"]
     cam2_mtx = np.array([
         [cam2_f[0], 0, cam2_c[0]],
         [0, cam2_f[1], cam2_c[1]],
@@ -148,16 +150,18 @@ for pair in image_pairs:
                     img_2 = aruco.drawDetectedMarkers(img_2, corners_2, borderColor=(0, 0, 255))
 
                     # Draw and display the corners
-                    # images_display = np.hstack((img_1, img_2))
-                    # cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
-                    # cv2.imshow('RealSense', images_display)
-                    # cv2.waitKey(0)
+                    images_display = np.hstack((img_1, img_2))
+                    cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
+                    cv2.imshow('RealSense', images_display)
+                    cv2.waitKey(0)
 
     cv2.destroyAllWindows()
     print("common_img_count: ", common_img_count)
 
     flags = cv2.CALIB_FIX_INTRINSIC
     criteria_stereo = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.0001)
+    # transform coordinates in 1st cam frame to 2nd cam frame
+    # gives the position of the 1st cam w.r.t the 2nd cam frame
     rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs,
                                                           cam2_mtx, distCoeffs, [640, 480], criteria_stereo, flags)
 
@@ -165,12 +169,31 @@ for pair in image_pairs:
     T = T.tolist()
     T = [T[0][0],T[1][0],T[2][0]]
 
+    trans = np.vstack( (np.hstack((R, np.array(T).reshape(-1,1))), [0,0,0,1]) )
+    inv_trans = np.linalg.inv(trans)  # transform coordinates in 2nd cam frame to 1st cam frame
+    # gives the position of the 2nd cam w.r.t the 1st cam frame
+
+    # print(inv_trans[0:3, 0:3])
+    r = Rotation.from_matrix(inv_trans[0:3, 0:3])
+    angle = r.as_euler('xyz', degrees=True)
+    print('angle: ', angle)
+    # angle[1:] *= -1
+    # print(angle)
+    r = Rotation.from_euler('xyz', angle, degrees=True)
+    r_mat = r.as_matrix()
+    t = inv_trans[0:3, 3]
+    print('translation: ', t)
+    # t[0] *= -1
+
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]] = {}
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["rotation"] = np.eye(3).tolist()
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["translation"] = [0, 0, 0]
 
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]] = {}
-    configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = R.tolist()
-    configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["translation"] = T
+    # configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = inv_trans[0:3, 0:3].tolist()
+    configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["translation"] = t.tolist()
+    configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = r_mat.tolist()
+    # configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["translation"] = [0, 0, 0]
 
     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent=4)
+
