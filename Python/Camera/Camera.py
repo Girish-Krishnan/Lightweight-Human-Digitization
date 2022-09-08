@@ -15,7 +15,6 @@ class Camera:
         self.intrinsic_matrix = np.array([[0,focal_length[0],-img_center[0]],[-focal_length[1],0,-img_center[1]],[0,0,-1]])
         self.inverse_matrix = np.linalg.inv(self.intrinsic_matrix)
         self.extrinsic_matrix = np.array([[self.rotation[0,0],self.rotation[0,1],self.rotation[0,2],self.translation[0]],[self.rotation[1,0],self.rotation[1,1],self.rotation[1,2],self.translation[1]],[self.rotation[2,0],self.rotation[2,1],self.rotation[2,2],self.translation[2]],[0,0,0,1]])
-      
 
     def add_image(self,image,depth_map):
         self.image = image
@@ -47,51 +46,12 @@ class Camera:
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] < -250)[0])
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] < 1.5)[0])
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] > -1.5)[0])
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -200)[0])
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -200)[0])
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,1] > -500)[0])
-        o3d.visualization.draw_geometries([self.pcd_o3d])
-
-    def visualize_1(self):
-        self.pcd_o3d = o3d.geometry.PointCloud()
-        self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
-        self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] < -20)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -1000)[0])
-        o3d.visualization.draw_geometries([self.pcd_o3d])
-
-    def visualize_2(self):
-        self.pcd_o3d = o3d.geometry.PointCloud()
-        self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
-        self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] < -100)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -1000)[0])
-        o3d.visualization.draw_geometries([self.pcd_o3d])
-
-    def visualize_3(self):
-        self.pcd_o3d = o3d.geometry.PointCloud()
-        self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
-        self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] < -250)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -1000)[0])
-        o3d.visualization.draw_geometries([self.pcd_o3d])
-
-    def visualize_4(self):
-        self.pcd_o3d = o3d.geometry.PointCloud()
-        self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
-        self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] < -250)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -1000)[0])
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,1] > -500)[0])
         o3d.visualization.draw_geometries([self.pcd_o3d])
 
 
@@ -105,12 +65,12 @@ class Combiner:
         for i in range(len(self.cam_array)):
             rotate.append(self.cam_array[i].rotation)
             self.cam_array[i].rotate_point_cloud(rotate[i])
-            self.cam_array[i].translate_point_cloud(-self.cam_array[i].translation)
+            self.cam_array[i].translate_point_cloud(self.cam_array[i].translation)  # I removed the negative sign
 
         self.pcd = np.concatenate(tuple([i.pcd for i in self.cam_array]),axis=0)
         self.colors = np.concatenate(tuple([i.colors for i in self.cam_array]),axis=0)
         self.complete_pcd = np.hstack((self.pcd,self.colors))
-        
+
 
     def visualize(self):
 
@@ -119,7 +79,7 @@ class Combiner:
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
         o3d.io.write_point_cloud("./data.ply", self.pcd_o3d)
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] > -1000)[0])
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] < 1.5)[0])
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -1000)[0]) 
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] < 1)[0])
         o3d.visualization.draw_geometries([self.pcd_o3d])

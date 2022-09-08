@@ -54,7 +54,7 @@ if len(ctx.devices) > 0:
                                                                                        ir_intrinsics.fy]
         configuration_parameters["cams"][s_num]["intrinsics"]["ir_img_center"] = [ir_intrinsics.ppx,
                                                                                      ir_intrinsics.ppy]
-        # assert color_intrinsics.coeffs == [0.0, 0.0, 0.0, 0.0, 0.0]
+        assert color_intrinsics.coeffs == [0.0, 0.0, 0.0, 0.0, 0.0]
         # assert depth_intrinsics.coeffs == [0.0, 0.0, 0.0, 0.0, 0.0]
         assert ir_intrinsics.coeffs == [0.0, 0.0, 0.0, 0.0, 0.0]
 
@@ -110,15 +110,15 @@ try:
                 #sensor.set_option(rs.option.gain, gain_d435)
                 sensor.set_option(rs.option.exposure, exposure_d435)
             else:
-                #sensor.set_option(rs.option.gain, gain_d415)
+                # sensor.set_option(rs.option.gain, gain_d415)
                 sensor.set_option(rs.option.exposure, exposure_d415)
 
             frames = pipelines[i].wait_for_frames()
 
-            # color_frame = frames.get_color_frame()
-            # if not color_frame:
-            #     continue
-            # color_images[i] = np.asanyarray(color_frame.get_data())
+            color_frame = frames.get_color_frame()
+            if not color_frame:
+                continue
+            color_images[i] = np.asanyarray(color_frame.get_data())
 
             ir_frame = frames.first(rs.stream.infrared)
             if not ir_frame:

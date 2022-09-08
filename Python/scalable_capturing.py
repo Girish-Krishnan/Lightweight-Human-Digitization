@@ -26,7 +26,7 @@ if len(ctx.devices) > 0:
         configs[device_num].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 30)
 
         # Align objects
-        align_to = rs.stream.color
+        align_to = rs.stream.depth  # align to depth frame
         align.append(rs.align(align_to))
         pipelines[device_num].start(configs[device_num])
 
@@ -80,11 +80,10 @@ try:
             color_images[i] = np.asanyarray(color_frame.get_data())
             depth_images[i] = np.asanyarray(depth_frame.get_data())
 
-            cv.namedWindow('RealSense ' + str(i), cv.WINDOW_NORMAL)
-            cv.imshow('RealSense ' + str(i), color_images[i])
-
         # Stack all images horizontally
-        #images = np.hstack(tuple(color_images))
+        images = np.hstack(tuple(color_images))
+        cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
+        cv.imshow('RealSense', images)
 
         # Show images from both cameras
 

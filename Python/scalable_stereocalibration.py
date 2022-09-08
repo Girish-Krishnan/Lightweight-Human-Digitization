@@ -12,6 +12,7 @@ import json
 from itertools import combinations
 import cv2.aruco as aruco
 from scipy.spatial.transform import Rotation
+from utils.trajectory_io import *
 
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
@@ -177,13 +178,15 @@ for pair in image_pairs:
     r = Rotation.from_matrix(inv_trans[0:3, 0:3])
     angle = r.as_euler('xyz', degrees=True)
     print('angle: ', angle)
-    # angle[1:] *= -1
-    # print(angle)
+    # angle[0] *= -1
+    # angle[2] *= -1
+    # print('new angle: ', angle)
     r = Rotation.from_euler('xyz', angle, degrees=True)
     r_mat = r.as_matrix()
     t = inv_trans[0:3, 3]
     print('translation: ', t)
     # t[0] *= -1
+    # t[2] *= -1
 
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]] = {}
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["rotation"] = np.eye(3).tolist()
@@ -197,3 +200,5 @@ for pair in image_pairs:
 
     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent=4)
 
+    write_to_file('odometry.log', 0, np.eye(3), [0, 0, 0])
+    write_to_file('odometry.log', 1, r_mat, t)
