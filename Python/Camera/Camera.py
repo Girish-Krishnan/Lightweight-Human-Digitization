@@ -12,9 +12,14 @@ class Camera:
         self.rotation = np.array(rotation)
         self.translation = np.array(translation)
         self.img_id = ""         
-        self.intrinsic_matrix = np.array([[0,focal_length[0],-img_center[0]],[-focal_length[1],0,-img_center[1]],[0,0,-1]])
+        self.intrinsic_matrix = np.array([[0,focal_length[0],img_center[0]],[focal_length[1],0,img_center[1]],[0,0,1]])
+        # self.intrinsic_matrix = np.array([[focal_length[0], 0, img_center[0]], [0, focal_length[1], img_center[1]], [0, 0, 1]])
         self.inverse_matrix = np.linalg.inv(self.intrinsic_matrix)
         self.extrinsic_matrix = np.array([[self.rotation[0,0],self.rotation[0,1],self.rotation[0,2],self.translation[0]],[self.rotation[1,0],self.rotation[1,1],self.rotation[1,2],self.translation[1]],[self.rotation[2,0],self.rotation[2,1],self.rotation[2,2],self.translation[2]],[0,0,0,1]])
+        self.fx = focal_length[0]
+        self.fy = focal_length[1]
+        self.cx = img_center[0]
+        self.cy = img_center[1]
 
     def add_image(self,image,depth_map):
         self.image = image
@@ -30,10 +35,27 @@ class Camera:
         plt.title("Depth Map")
         plt.show()          
 
+    # def point_cloud(self):
+    #     self.pcd = np.hstack(
+    #         (np.transpose(np.nonzero(self.depth_map)), np.reshape(self.depth_map[np.nonzero(self.depth_map)], (-1,1)) )
+    #     )
+    #
+    #     self.pcd = np.matmul(
+    #         self.inverse_matrix, np.vstack((self.pcd.T[:2]*self.pcd.T[2], self.pcd.T[2]))
+    #     ).T
+    #
+    #     self.colors = np.flip(self.image[np.nonzero(self.depth_map)], axis=1)
+
     def point_cloud(self):
-        self.pcd = np.hstack((np.transpose(np.nonzero(self.depth_map)),np.reshape(self.depth_map[np.nonzero(self.depth_map)],(-1,1))))         
-        self.pcd = np.matmul(self.inverse_matrix,np.vstack((self.pcd.T[:2]*self.pcd.T[2],self.pcd.T[2])))[:3].T
-        self.colors = np.flip(self.image[np.nonzero(self.depth_map)],axis=1)
+        self.pcd = np.hstack(
+            (np.transpose(np.nonzero(self.depth_map)), np.reshape(self.depth_map[np.nonzero(self.depth_map)], (-1,1)) )
+        )  # (xxx, 3)
+        self.pcd[:, [0, 1]] = self.pcd[:, [1, 0]]  # swap x and y axis since they are reversed in image coordinates
+
+        self.pcd[:, 0] = (self.pcd[:, 0] - self.cx) * self.pcd[:, 2] / self.fx
+        self.pcd[:, 1] = (self.pcd[:, 1] - self.cy) * self.pcd[:, 2] / self.fy
+
+        self.colors = np.flip(self.image[np.nonzero(self.depth_map)], axis=1)
 
     def translate_point_cloud(self,vector):
         self.pcd += vector

@@ -93,17 +93,9 @@ for i in range(len(cams_list)):
         
         cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"],CAM_DATA[i]["intrinsics"]["ir_focal_length"],CAM_DATA[i]["intrinsics"]["ir_img_center"],rotation,translation))
 
-
-print("cam[0].rotation: \n", cam[0].rotation)
-print("cam[0].translation: ", cam[0].translation)
-print("cam[1].rotation: \n", cam[1].rotation)
-print("cam[1].translation: ", cam[1].translation)
-
 for i in range(len(cams_list)):
     cam[i].add_image(cv.imread("./" + cams_list[i] + "/sample_images/image.jpg"), np.load("./" + cams_list[i] + "/sample_images/depth_map.npy")* 0.001)
     cam[i].point_cloud()
-    cam[i].pcd[:, 0] *= -1
-    cam[i].pcd[:, 2] *= -1
     cam[i].visualize()
 
 combiner = Camera.Combiner(cam)
