@@ -94,9 +94,9 @@ color_images = len(serial_numbers) * [0]
 ir_images = len(serial_numbers) * [0]
 image_count = 0
 
-exposure_d415 = 80000
+exposure_d415 = 60000
 gain_d415 = 50
-exposure_d435 = 20000
+exposure_d435 = 8000
 gain_d435 = 20
 
 try:
@@ -110,7 +110,7 @@ try:
                 #sensor.set_option(rs.option.gain, gain_d435)
                 sensor.set_option(rs.option.exposure, exposure_d435)
             else:
-                # sensor.set_option(rs.option.gain, gain_d415)
+                #sensor.set_option(rs.option.gain, gain_d415)
                 sensor.set_option(rs.option.exposure, exposure_d415)
 
             frames = pipelines[i].wait_for_frames()

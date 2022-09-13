@@ -9,6 +9,13 @@ pipelines = []
 configs = []
 align = []
 
+# RUN THIS ONCE AND THEN COMMENT IT
+
+# ctx = rs.context()
+# devices = ctx.query_devices()
+# for dev in devices:
+# dev.hardware_reset()
+
 ctx = rs.context()
 if len(ctx.devices) > 0:
 
@@ -107,11 +114,11 @@ finally:
 
 
 ######################################################################################################################
-#
+
 # with(open("./configuration_parameters.json")) as f:
 #     configuration_parameters = json.load(f)
 #     for i in serial_numbers:
 #         configuration_parameters["cams"][i] = {}
-#
+
 #     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)
 #     f.close()

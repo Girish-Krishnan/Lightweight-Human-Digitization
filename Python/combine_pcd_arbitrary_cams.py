@@ -86,12 +86,17 @@ for i in range(len(cams_list)):
         previous_rotation = np.eye(3)
         translation = np.array([0,0,0])
         for j in range(1,len(path)):
-            translation = np.add(CAM_DATA[j][path[j]]["translation"],np.matmul(previous_rotation,translation))
-            if j != len(path)-1:
-                previous_rotation = CAM_DATA[j+1][path[j]]["rotation"]
-            rotation = np.matmul(CAM_DATA[j][path[j]]["rotation"],rotation)
-        
+            idx = cams_list.index(path[j-1])
+            translation = np.add(CAM_DATA[idx][path[j]]["translation"], np.matmul(previous_rotation,translation))
+            previous_rotation = CAM_DATA[idx][path[j]]["rotation"]
+            rotation = np.matmul(previous_rotation, rotation)
+        # print("Current Cam: ", cams_list[i])
+        # print("path to cam0: ", path)
+        # print("Final rotation: \n", rotation)
+        # print("Final translation: ", translation)
+        # print("___")
         cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"],CAM_DATA[i]["intrinsics"]["ir_focal_length"],CAM_DATA[i]["intrinsics"]["ir_img_center"],rotation,translation))
+
 
 for i in range(len(cams_list)):
     cam[i].add_image(cv.imread("./" + cams_list[i] + "/sample_images/image.jpg"), np.load("./" + cams_list[i] + "/sample_images/depth_map.npy")* 0.001)

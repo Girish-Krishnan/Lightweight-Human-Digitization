@@ -150,11 +150,11 @@ for pair in image_pairs:
                     img_1 = aruco.drawDetectedMarkers(img_1, corners_1, borderColor=(0, 0, 255))
                     img_2 = aruco.drawDetectedMarkers(img_2, corners_2, borderColor=(0, 0, 255))
 
-                    # Draw and display the corners
-                    images_display = np.hstack((img_1, img_2))
-                    cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
-                    cv2.imshow('RealSense', images_display)
-                    cv2.waitKey(0)
+                    # # Draw and display the corners
+                    # images_display = np.hstack((img_1, img_2))
+                    # cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
+                    # cv2.imshow('RealSense', images_display)
+                    # cv2.waitKey(0)
 
     cv2.destroyAllWindows()
     print("common_img_count: ", common_img_count)
@@ -163,8 +163,13 @@ for pair in image_pairs:
     criteria_stereo = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.0001)
     # transform coordinates in 1st cam frame to 2nd cam frame
     # gives the position of the 1st cam w.r.t the 2nd cam frame
-    rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs,
+
+    try:
+        rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs,
                                                           cam2_mtx, distCoeffs, [640, 480], criteria_stereo, flags)
+    # skip useless transformation
+    except:
+        continue
 
     print("Stereo Calibration RMS for cam " + str(x) + " and cam " + str(y) + ": ", rms)
     T = T.tolist()
@@ -174,31 +179,23 @@ for pair in image_pairs:
     inv_trans = np.linalg.inv(trans)  # transform coordinates in 2nd cam frame to 1st cam frame
     # gives the position of the 2nd cam w.r.t the 1st cam frame
 
-    # print(inv_trans[0:3, 0:3])
-    r = Rotation.from_matrix(inv_trans[0:3, 0:3])
+    r_mat = inv_trans[0:3, 0:3]
+    r = Rotation.from_matrix(r_mat)
     angle = r.as_euler('xyz', degrees=True)
     print('angle: ', angle)
-    # angle[0] *= -1
-    # angle[2] *= -1
-    # print('new angle: ', angle)
-    r = Rotation.from_euler('xyz', angle, degrees=True)
-    r_mat = r.as_matrix()
     t = inv_trans[0:3, 3]
     print('translation: ', t)
-    # t[0] *= -1
-    # t[2] *= -1
+
 
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]] = {}
-    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["rotation"] = np.eye(3).tolist()
-    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["translation"] = [0, 0, 0]
+    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["translation"] = trans[0:3, 3].tolist()
+    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["rotation"] = trans[0:3, 0:3].tolist()
 
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]] = {}
-    # configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = inv_trans[0:3, 0:3].tolist()
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["translation"] = t.tolist()
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = r_mat.tolist()
-    # configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["translation"] = [0, 0, 0]
 
     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent=4)
 
-    write_to_file('odometry.log', 0, np.eye(3), [0, 0, 0])
-    write_to_file('odometry.log', 1, r_mat, t)
+    # write_to_file('odometry.log', 0, np.eye(3), [0, 0, 0])
+    # write_to_file('odometry.log', 1, r_mat, t)
