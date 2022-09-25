@@ -10,11 +10,11 @@ configs = []
 align = []
 
 # RUN THIS ONCE AND THEN COMMENT IT
-
+#
 # ctx = rs.context()
 # devices = ctx.query_devices()
 # for dev in devices:
-# dev.hardware_reset()
+#     dev.hardware_reset()
 
 ctx = rs.context()
 if len(ctx.devices) > 0:
@@ -29,8 +29,8 @@ if len(ctx.devices) > 0:
         #     configs[device_num].enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
         #     configs[device_num].enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
         # else:
-        configs[device_num].enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
-        configs[device_num].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 30)
+        configs[device_num].enable_stream(rs.stream.depth, 1280,720, rs.format.z16, 30)
+        configs[device_num].enable_stream(rs.stream.color, 1280,720, rs.format.bgr8, 30)
 
         # Align objects
         align_to = rs.stream.depth  # align to depth frame
@@ -113,12 +113,12 @@ finally:
     cv.destroyAllWindows()
 
 
-######################################################################################################################
-
+# ######################################################################################################################
+#
 # with(open("./configuration_parameters.json")) as f:
 #     configuration_parameters = json.load(f)
 #     for i in serial_numbers:
 #         configuration_parameters["cams"][i] = {}
-
+#
 #     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)
 #     f.close()

@@ -18,11 +18,12 @@ SETTINGS_PATH = './configuration_parameters.json'
 param = json.load(open(SETTINGS_PATH))
 cams_list = list(param["cams"].keys())
 print("cams_list: ", cams_list)
-CAM_DATA = [param["cams"][cam] for cam in param["cams"]] # camera data
+CAM_DATA = [param["cams"][cam] for cam in param["cams"]]  # camera data
 
 """
 DETERMINING R and T for each cam relative to the first cam
 """
+
 
 def find_path_to_cam_0(initial_cam):
     unvisited_cams = cams_list.copy()
@@ -51,7 +52,7 @@ def find_path_to_cam_0(initial_cam):
                 previous_nodes[neighbor] = current_min_node
 
         unvisited_cams.remove(current_min_node)
-    
+
     path = []
     node = initial_cam
     while node != cams_list[0]:
@@ -61,6 +62,7 @@ def find_path_to_cam_0(initial_cam):
     path.append(cams_list[0])
 
     return path
+
 
 """
 CREATING CAMERA OBJECTS
@@ -77,33 +79,52 @@ for i in range(len(cams_list)):
                     [0.0, 1.0, 0.0],
                     [0.0, 0.0, 1.0]]
         translation = [0.0, 0.0, 0.0]
-        cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"],CAM_DATA[i]["intrinsics"]["ir_focal_length"],CAM_DATA[i]["intrinsics"]["ir_img_center"],rotation,translation))
+        cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
+                                 CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation))
         path = find_path_to_cam_0(cams_list[i])
+
+    # elif i == 3:
+    #     path = ['819312073170', '007522060984', '839212060064']
+    #     rotation = np.eye(3)
+    #     previous_rotation = np.eye(3)
+    #     translation = np.array([0,0,0])
+    #     for j in range(1,len(path)):
+    #         idx = cams_list.index(path[j-1])
+    #         translation = np.add(CAM_DATA[idx][path[j]]["translation"], np.matmul(previous_rotation,translation))
+    #         previous_rotation = CAM_DATA[idx][path[j]]["rotation"]
+    #         rotation = np.matmul(previous_rotation, rotation)
+    #     print("Current Cam: ", cams_list[i])
+    #     print("path to cam0: ", path)
+    #     print("Final rotation: \n", rotation)
+    #     print("Final translation: ", translation)
+    #     print("___")
+    #     cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"],CAM_DATA[i]["intrinsics"]["ir_focal_length"],CAM_DATA[i]["intrinsics"]["ir_img_center"],rotation,translation))
 
     else:
         path = find_path_to_cam_0(cams_list[i])
         rotation = np.eye(3)
         previous_rotation = np.eye(3)
-        translation = np.array([0,0,0])
-        for j in range(1,len(path)):
-            idx = cams_list.index(path[j-1])
-            translation = np.add(CAM_DATA[idx][path[j]]["translation"], np.matmul(previous_rotation,translation))
+        translation = np.array([0, 0, 0])
+        for j in range(1, len(path)):
+            idx = cams_list.index(path[j - 1])
             previous_rotation = CAM_DATA[idx][path[j]]["rotation"]
+            translation = np.add(CAM_DATA[idx][path[j]]["translation"], np.matmul(previous_rotation, translation))
             rotation = np.matmul(previous_rotation, rotation)
-        # print("Current Cam: ", cams_list[i])
-        # print("path to cam0: ", path)
-        # print("Final rotation: \n", rotation)
-        # print("Final translation: ", translation)
-        # print("___")
-        cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"],CAM_DATA[i]["intrinsics"]["ir_focal_length"],CAM_DATA[i]["intrinsics"]["ir_img_center"],rotation,translation))
-
+        print("Current Cam: ", cams_list[i])
+        print("path to cam0: ", path)
+        print("Final rotation: \n", rotation)
+        print("Final translation: ", translation)
+        print("___")
+        cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
+                                 CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation))
 
 for i in range(len(cams_list)):
-    cam[i].add_image(cv.imread("./" + cams_list[i] + "/sample_images/image.jpg"), np.load("./" + cams_list[i] + "/sample_images/depth_map.npy")* 0.001)
+    cam[i].add_image(cv.imread("./" + cams_list[i] + "/sample_images/image.jpg"),
+                     np.load("./" + cams_list[i] + "/sample_images/depth_map.npy") * 0.001)
     cam[i].point_cloud()
     cam[i].visualize()
 
 combiner = Camera.Combiner(cam)
 combiner.combine()
-np.save("./data/Point_Clouds/point_cloud_combined.npy",combiner.complete_pcd)
+np.save("./data/Point_Clouds/point_cloud_combined.npy", combiner.complete_pcd)
 combiner.visualize()
