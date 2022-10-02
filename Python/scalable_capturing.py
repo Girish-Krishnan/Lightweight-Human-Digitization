@@ -25,12 +25,8 @@ if len(ctx.devices) > 0:
         pipelines.append(rs.pipeline())
         configs.append(rs.config())
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-        # if ctx.devices[device_num].get_info(rs.camera_info.serial_number) == "819312073170":
-        #     configs[device_num].enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-        #     configs[device_num].enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
-        # else:
-        configs[device_num].enable_stream(rs.stream.depth, 1280,720, rs.format.z16, 30)
-        configs[device_num].enable_stream(rs.stream.color, 1280,720, rs.format.bgr8, 30)
+        configs[device_num].enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
+        configs[device_num].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 30)
 
         # Align objects
         align_to = rs.stream.depth  # align to depth frame
@@ -47,6 +43,9 @@ if len(ctx.devices) > 0:
         emitter1 = depth_sensor.get_option(rs.option.emitter_enabled)
         print("new emitter = ", emitter1)
         depth_sensor.set_option(rs.option.enable_auto_exposure, True)  # enable auto exposure
+
+        depth_sensor.set_option(rs.option.laser_power, 360)  # max laser power
+        # print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
         if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
             os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
@@ -67,16 +66,18 @@ else:
 START RECORDING SOME FRAMES
 
 """
-
+raw_color_images = len(serial_numbers) * [0]
 color_images = len(serial_numbers) * [0]
 depth_images = len(serial_numbers) * [0]
+depth_colormaps = len(serial_numbers) * [0]
 
 try:
     while True:
 
         for i in range(len(serial_numbers)):
-        
+
             frames = pipelines[i].wait_for_frames()
+            raw_color_frame = frames.get_color_frame()
             aligned_frames = align[i].process(frames)
             color_frame = aligned_frames.get_color_frame()
             depth_frame = aligned_frames.get_depth_frame()
@@ -84,23 +85,27 @@ try:
                 continue
 
             # Convert images to numpy arrays
+            raw_color_images[i] = np.asanyarray(raw_color_frame.get_data())
             color_images[i] = np.asanyarray(color_frame.get_data())
             depth_images[i] = np.asanyarray(depth_frame.get_data())
 
+            depth_colormaps[i] = cv.applyColorMap(cv.convertScaleAbs(depth_images[i], alpha=0.03), cv.COLORMAP_JET)
+
         # Stack all images horizontally
-        images = np.hstack(tuple(color_images))
+        stacked_color_images = np.hstack(tuple(color_images))
+        stacked_depth_images = np.hstack(tuple(depth_colormaps))
+        images = np.vstack((stacked_color_images, stacked_depth_images))
         cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
         cv.imshow('RealSense', images)
-
-        # Show images from both cameras
 
         ch = cv.waitKey(1)
         if ch==32:
 
             for i in range(len(serial_numbers)):
+                cv.imwrite('./' + serial_numbers[i] + '/sample_images/raw_image.jpg', raw_color_images[i])
                 cv.imwrite('./' + serial_numbers[i] + '/sample_images/image.jpg', color_images[i])
                 np.save('./' + serial_numbers[i] + '/sample_images/depth_map.npy', depth_images[i])
-                cv.imwrite('./' + serial_numbers[i] + '/sample_images/depth.png', depth_images[i])
+                cv.imwrite('./' + serial_numbers[i] + '/sample_images/depth.png', depth_colormaps[i])
             break
 
 
@@ -113,8 +118,8 @@ finally:
     cv.destroyAllWindows()
 
 
-# ######################################################################################################################
-#
+######################################################################################################################
+
 # with(open("./configuration_parameters.json")) as f:
 #     configuration_parameters = json.load(f)
 #     for i in serial_numbers:

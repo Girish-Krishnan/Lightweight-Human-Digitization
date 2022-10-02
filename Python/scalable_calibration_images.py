@@ -15,6 +15,13 @@ with(open("./configuration_parameters.json")) as f:
     num_images = configuration_parameters["num_calibration_imgs"]
     f.close()
 
+# RUN THIS ONCE AND THEN COMMENT IT
+#
+# ctx = rs.context()
+# devices = ctx.query_devices()
+# for dev in devices:
+#     dev.hardware_reset()
+
 ctx = rs.context()
 if len(ctx.devices) > 0:
 
@@ -94,7 +101,7 @@ color_images = len(serial_numbers) * [0]
 ir_images = len(serial_numbers) * [0]
 image_count = 0
 
-exposure_d415 = 60000
+exposure_d415 = 90000
 gain_d415 = 50
 exposure_d435 = 8000
 gain_d435 = 20
@@ -107,10 +114,10 @@ try:
             sensor = profiles[i].get_device().query_sensors()[0]
             #print(serial_numbers[i])
             if serial_numbers[i] == "819312073170":
-                #sensor.set_option(rs.option.gain, gain_d435)
+                sensor.set_option(rs.option.gain, gain_d435)
                 sensor.set_option(rs.option.exposure, exposure_d435)
             else:
-                #sensor.set_option(rs.option.gain, gain_d415)
+                # sensor.set_option(rs.option.gain, gain_d415)
                 sensor.set_option(rs.option.exposure, exposure_d415)
 
             frames = pipelines[i].wait_for_frames()

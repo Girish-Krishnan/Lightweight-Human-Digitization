@@ -72,6 +72,8 @@ for pair in image_pairs:
     x = pair[0]
     y = pair[1]
     common_img_count = 0  # the number of common images between the two cameras that contain the chessboard successfully detected
+    print('cam1: ', serial_numbers[x])
+    print('cam2: ', serial_numbers[y])
 
     cam1_f = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_focal_length"]
     cam1_c = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_img_center"]
