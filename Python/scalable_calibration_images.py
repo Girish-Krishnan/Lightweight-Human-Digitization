@@ -101,8 +101,8 @@ color_images = len(serial_numbers) * [0]
 ir_images = len(serial_numbers) * [0]
 image_count = 0
 
-exposure_d415 = 90000
-gain_d415 = 50
+exposure_d415 = 70000
+gain_d415 = 30
 exposure_d435 = 8000
 gain_d435 = 20
 

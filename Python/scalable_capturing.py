@@ -27,7 +27,7 @@ if len(ctx.devices) > 0:
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         configs[device_num].enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
         configs[device_num].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 30)
-        configs[device_num].enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
+        #configs[device_num].enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
 
         # Align objects
         align_to = rs.stream.depth  # align to depth frame
@@ -46,7 +46,7 @@ if len(ctx.devices) > 0:
         depth_sensor.set_option(rs.option.enable_auto_exposure, True)  # enable auto exposure
 
         depth_sensor.set_option(rs.option.laser_power, 360)  # max laser power
-        # print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
+        print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
         if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
             os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
