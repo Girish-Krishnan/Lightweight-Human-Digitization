@@ -70,6 +70,9 @@ class Combiner:
             self.cam_array[i].translate_point_cloud(self.cam_array[i].translation)
 
         self.pcd = np.concatenate(tuple([i.pcd for i in self.cam_array]),axis=0)
+
+        self.rotate_point_cloud(np.array([[1,0,0],[0,-1,0],[0,0,1]]))
+
         self.colors = np.concatenate(tuple([i.colors for i in self.cam_array]),axis=0)
         self.complete_pcd = np.hstack((self.pcd,self.colors))
 
@@ -79,14 +82,16 @@ class Combiner:
         #o3d.io.write_point_cloud("./data.ply", self.pcd_o3d)
         # cropping
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] > 0.5)[0])
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] > 0)[0])
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] < 2.5)[0])
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] < 3)[0])
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] > -1.5)[0])
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] > -2)[0])
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] < 1.5)[0])
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] < 2)[0])
 
+    def rotate_point_cloud(self,rotate):    
+        self.pcd = np.matmul(rotate,self.pcd.T).T
 
     def visualize(self):
 

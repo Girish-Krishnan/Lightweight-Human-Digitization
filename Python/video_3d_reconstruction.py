@@ -167,6 +167,7 @@ VISUALIZATION
 vis = o3d.visualization.Visualizer()
 vis.create_window()
 
+
 # geometry is the point cloud used in your animaiton
 
 for i in range(len(pcd_list)):
@@ -179,5 +180,5 @@ for i in range(len(pcd_list)):
     vis.poll_events()
     vis.update_renderer()
     vis.remove_geometry(geometry)
-    time.sleep(1/30)
+    time.sleep(1)
     #input("Press Enter to continue...")
