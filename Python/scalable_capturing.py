@@ -9,7 +9,7 @@ pipelines = []
 configs = []
 align = []
 
-# RUN THIS ONCE AND THEN COMMENT IT
+# RUN THIS ONCE AND THEN COMMENT IT OUT
 #
 # ctx = rs.context()
 # devices = ctx.query_devices()
@@ -27,7 +27,7 @@ if len(ctx.devices) > 0:
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         configs[device_num].enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
         configs[device_num].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 30)
-        #configs[device_num].enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
+        configs[device_num].enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
 
         # Align objects
         align_to = rs.stream.depth  # align to depth frame
@@ -121,10 +121,10 @@ finally:
 
 ######################################################################################################################
 
-# with(open("./configuration_parameters.json")) as f:
-#     configuration_parameters = json.load(f)
-#     for i in serial_numbers:
-#         configuration_parameters["cams"][i] = {}
-#
-#     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)
-#     f.close()
+with(open("./configuration_parameters.json")) as f:
+    configuration_parameters = json.load(f)
+    for i in serial_numbers:
+        configuration_parameters["cams"][i] = {}
+
+    json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)
+    f.close()
