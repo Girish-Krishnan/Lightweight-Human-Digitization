@@ -70,8 +70,8 @@ for pair in image_pairs:
     x = pair[0]
     y = pair[1]
     common_img_count = 0  # the number of common images between the two cameras that contain the chessboard successfully detected
-    print('cam1: ', serial_numbers[x])
-    print('cam2: ', serial_numbers[y])
+    #print('cam1: ', serial_numbers[x])
+    #print('cam2: ', serial_numbers[y])
 
     cam1_f = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_focal_length"]
     cam1_c = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_img_center"]
@@ -103,7 +103,7 @@ if len(ctx.devices) > 0:
 
     for device_num in range(len(ctx.devices)):
         print ('Found device: ', ctx.devices[device_num].get_info(rs.camera_info.name), ' ', ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-        serial_numbers.append(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
+        #serial_numbers.append(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         pipelines.append(rs.pipeline())
         configs.append(rs.config())
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
@@ -182,6 +182,7 @@ gain_d415 = 30
 exposure_d435 = 8000
 gain_d435 = 20
 
+
 try:
     while True:
 
@@ -189,12 +190,9 @@ try:
 
             sensor = profiles[i].get_device().query_sensors()[0]
             #print(serial_numbers[i])
-            if serial_numbers[i] == "819312073170":
-                sensor.set_option(rs.option.gain, gain_d435)
-                sensor.set_option(rs.option.exposure, exposure_d435)
-            else:
-                # sensor.set_option(rs.option.gain, gain_d415)
-                sensor.set_option(rs.option.exposure, exposure_d415)
+            
+            # sensor.set_option(rs.option.gain, gain_d415)
+            sensor.set_option(rs.option.exposure, exposure_d415)
 
             frames = pipelines[i].wait_for_frames()
 
@@ -208,30 +206,30 @@ try:
                 continue
 
             ir_frame_original = np.asanyarray(ir_frame.get_data())
-            ir_frame_processed = cv.cvtColor(ir_frame_original, cv.COLOR_BGR2GRAY)
-            corners_1, ids_1, rejectedImgPoints_1 = aruco.detectMarkers(ir_frame_processed, ARUCO_DICT, parameters=ARUCO_PARAMETERS)
-
+            ir_frame_processed = np.copy(color_images[i])
+            corners_1, ids_1, rejectedImgPoints_1 = aruco.detectMarkers(ir_frame_original, ARUCO_DICT, parameters=ARUCO_PARAMETERS)
+            #print(len(corners_1))
             if len(corners_1) != 0:
             # Refine detected markers
             # Eliminates markers not part of our board, adds missing markers to the board
                 corners_1, ids_1, rejectedImgPoints_1, recoveredIds_1 = aruco.refineDetectedMarkers(
-                image=ir_frame_processed,
+                image=ir_frame_original,
                 board=CHARUCO_BOARD,
                 detectedCorners=corners_1,
                 detectedIds=ids_1,
                 rejectedCorners=rejectedImgPoints_1,
                 cameraMatrix=cam1_mtx,
                 distCoeffs=distCoeffs)
-
+                
             # Only try to find CharucoBoard if we found markers
                 if ids_1 is not None and len(ids_1) > 10:
                 # Get charuco corners and ids from detected aruco markers
                     response_1, charuco_corners_1, charuco_ids_1 = aruco.interpolateCornersCharuco(
                     markerCorners=corners_1,
                     markerIds=ids_1,
-                    image=ir_frame_processed,
+                    image=ir_frame_original,
                     board=CHARUCO_BOARD)
-
+                    
 
                     if response_1 is not None and response_1 > 20\
                         and len(charuco_corners_1) == len(objp):
@@ -240,7 +238,8 @@ try:
                         imgpoints_1.append(charuco_corners_1)
 
                         # Outline all of the markers detected in our image
-                        ir_frame_processed = aruco.drawDetectedMarkers(ir_frame_original, corners_1, borderColor=(0, 0, 255))
+                        ir_frame_processed = aruco.drawDetectedMarkers(ir_frame_processed, corners_1, borderColor=(0, 0, 255))
+                        
 
 
             ir_images[i] = ir_frame_original

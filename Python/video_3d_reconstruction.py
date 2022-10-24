@@ -7,6 +7,7 @@ import copy
 import sys
 import matplotlib.pyplot as plt
 import pyrealsense2 as rs
+import time
 
 """
 GET CAM CALIBRATION DATA
@@ -112,63 +113,71 @@ for i in range(len(video_paths)):
     configs.append(rs.config())
     rs.config.enable_device_from_file(configs[i], video_paths[i])
     configs[i].enable_stream(rs.stream.depth, rs.format.z16, 30)
+    configs[i].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 30)
     pipelines[i].start(configs[i])
 
 combiner = Camera.Combiner(cam)
 
-try:
-    while True:
+
+
+while True:
         for i in range(len(video_paths)):
             # Get frameset of depth
-            frames = pipelines[i].wait_for_frames()
+            try:
+                frames = pipelines[i].wait_for_frames()
 
-            # Get depth frame
-            depth_frame = np.asanyarray(frames.get_depth_frame().get_data())
-            
-            # Get color frame
-            color_frame = np.asanyarray(frames.get_color_frame().get_data())
+                # Get depth frame
+                depth_frame = np.asanyarray(frames.get_depth_frame().get_data())
+                
+                # Get color frame
+                color_frame = np.asanyarray(frames.get_color_frame().get_data())
 
-            # Colorize depth frame to jet colormap
-            #depth_color_frame = colorizer.colorize(depth_frame)
+                # Colorize depth frame to jet colormap
+                #depth_color_frame = colorizer.colorize(depth_frame)
 
-            # Convert depth_frame to numpy array to render image in opencv
-            #depth_color_image = np.asanyarray(depth_color_frame.get_data())
+                # Convert depth_frame to numpy array to render image in opencv
+                #depth_color_image = np.asanyarray(depth_color_frame.get_data())
 
-            # # Render image in opencv window
-            #cv2.imshow("Depth Stream", depth_color_image)
-            #key = cv2.waitKey(1)
-            # # if pressed escape exit program
-            #if key == 27:
-            #    cv2.destroyAllWindows()
-            #    break
+                # # Render image in opencv window
+                #cv2.imshow("Depth Stream", depth_color_image)
+                #key = cv2.waitKey(1)
+                # # if pressed escape exit program
+                #if key == 27:
+                #    cv2.destroyAllWindows()
+                #    break
 
-            cam[i].add_image(color_frame, depth_frame * 0.001)
-            cam[i].point_cloud()
+                cam[i].add_image(color_frame, depth_frame * 0.001)
+                cam[i].point_cloud()
+            except Exception as e:
+                print(e)
+                break
             
         combiner.combine()
         pcd_list.append(combiner.pcd_o3d)
-
-
-finally:
-    pass
+        #combiner.visualize()
+        print(len(pcd_list))
+        if len(pcd_list) == 120:
+            break
 
 
 """
 VISUALIZATION
 """
 
-
 vis = o3d.visualization.Visualizer()
 vis.create_window()
 
 # geometry is the point cloud used in your animaiton
-geometry = o3d.geometry.PointCloud()
-vis.add_geometry(geometry)
 
-for i in range(pcd_list):
+for i in range(len(pcd_list)):
     # now modify the points of your geometry
     # you can use whatever method suits you best, this is just an example
+    geometry = o3d.geometry.PointCloud()
     geometry.points = pcd_list[i].points
-    vis.update_geometry(geometry)
+    geometry.colors = pcd_list[i].colors
+    vis.add_geometry(geometry)
     vis.poll_events()
     vis.update_renderer()
+    vis.remove_geometry(geometry)
+    time.sleep(1/30)
+    #input("Press Enter to continue...")
