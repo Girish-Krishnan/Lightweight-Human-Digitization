@@ -165,12 +165,14 @@ for pair in image_pairs:
     criteria_stereo = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.0001)
     # transform coordinates in 1st cam frame to 2nd cam frame
     # gives the position of the 1st cam w.r.t the 2nd cam frame
-
-    try:
-        rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs,
-                                                          cam2_mtx, distCoeffs, [640, 480], criteria_stereo, flags)
-    # skip useless transformation
-    except:
+    if common_img_count >= THRESHOLD:
+        try:
+            rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs,
+                                                            cam2_mtx, distCoeffs, [640, 480], criteria_stereo, flags)
+        # skip useless transformation
+        except:
+            continue
+    else:
         continue
 
     print("Stereo Calibration RMS for cam " + str(x) + " and cam " + str(y) + ": ", rms)
