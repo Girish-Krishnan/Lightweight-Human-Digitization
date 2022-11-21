@@ -56,7 +56,7 @@ class Camera:
         points = np.asarray(self.pcd_o3d.points)
         self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] < 2)[0])
         points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] > 0.5)[0])
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] > 0.75)[0])
         points = np.asarray(self.pcd_o3d.points)
         self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -0.75)[0])
         points = np.asarray(self.pcd_o3d.points)
@@ -80,7 +80,7 @@ class Combiner:
 
         self.pcd = np.concatenate(tuple([i.pcd for i in self.cam_array]),axis=0)
         #self.pcd = np.matmul(rotate,self.pcd.T).T
-        #self.rotate_point_cloud(np.array([[-1,0,0],[0,-1,0],[0,0,-1]]))
+        self.rotate_point_cloud(np.array([[-1,0,0],[0,-1,0],[0,0,-1]]))
 
         self.colors = np.concatenate(tuple([i.colors for i in self.cam_array]),axis=0)
         self.complete_pcd = np.hstack((self.pcd,self.colors))
@@ -90,16 +90,16 @@ class Combiner:
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
         
         # cropping
-        #points = np.asarray(self.pcd_o3d.points)
-        #self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] < 1)[0])
-        #points = np.asarray(self.pcd_o3d.points)
-        #self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] > -2)[0])
-        #points = np.asarray(self.pcd_o3d.points)
-        #self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] > -0.75)[0])
-        #points = np.asarray(self.pcd_o3d.points)
-        #self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] < 1.5)[0])
-        #points = np.asarray(self.pcd_o3d.points)
-        #self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 1] > -0.4)[0])
+        points = np.asarray(self.pcd_o3d.points)
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] < -1)[0])
+        points = np.asarray(self.pcd_o3d.points)
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] > -2)[0])
+        points = np.asarray(self.pcd_o3d.points)
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] > -0.25)[0])
+        points = np.asarray(self.pcd_o3d.points)
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] < 0.5)[0])
+        points = np.asarray(self.pcd_o3d.points)
+        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 1] > -0.75)[0])
         o3d.io.write_point_cloud("./data.ply", self.pcd_o3d)
         
         
@@ -121,3 +121,38 @@ class Combiner:
                                         front=[0.9288, -0.2951, -0.2242],
                                         lookat=[1.6784, 2.0612, 1.4451],
                                         up=[-0.3402, -0.9189, -0.1996])
+
+    def optimize(self):
+        for i in range(2,len(self.cam_array)):
+            source = self.cam_array[i].pcd_o3d
+            target = self.cam_array[i-1].pcd_o3d
+            threshold = 0.02
+
+            # perform ICP
+
+            # trans_init = np.hstack((np.matmul(np.linalg.inv(self.cam_array[i-1].rotation),self.cam_array[i].rotation),
+            #                        (-self.cam_array[i-1].translation+self.cam_array[i].translation).reshape(3,1)))
+            
+            
+            #trans_init = np.vstack((trans_init,np.array([0,0,0,1])))
+
+            trans_init = np.eye(4)
+
+            self.draw_registration_result(source, target, trans_init)
+            print("Initial alignment")
+            evaluation = o3d.pipelines.registration.evaluate_registration(
+                 source, target, threshold, trans_init)
+            print(evaluation)
+
+            print("Apply point-to-point ICP")
+            reg_p2p = o3d.pipelines.registration.registration_icp(
+                 source, target, threshold, trans_init,
+                 o3d.pipelines.registration.TransformationEstimationPointToPoint())
+            print(reg_p2p)
+            print("Transformation is:")
+            print(reg_p2p.transformation)
+            self.draw_registration_result(source, target, reg_p2p.transformation)
+
+            self.cam_array[i].rotation = np.matmul(self.cam_array[i].rotation,np.array(reg_p2p.transformation[:3,:3]))
+            self.cam_array[i].translation += np.array(reg_p2p.transformation[:3,3])
+

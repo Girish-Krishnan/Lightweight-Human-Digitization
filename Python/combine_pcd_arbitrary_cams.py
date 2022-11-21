@@ -130,6 +130,8 @@ combiner.combine()
 #np.save("./data/Point_Clouds/point_cloud_combined.npy", combiner.complete_pcd)
 combiner.visualize()
 
+
+
 # def draw_registration_result(source, target, transformation):
 #     source_temp = copy.deepcopy(source)
 #     target_temp = copy.deepcopy(target)
