@@ -190,7 +190,7 @@ try:
 
             sensor = profiles[i].get_device().query_sensors()[0]
             #print(serial_numbers[i])
-            
+        
             # sensor.set_option(rs.option.gain, gain_d415)
             sensor.set_option(rs.option.exposure, exposure_d415)
 

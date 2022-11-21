@@ -34,11 +34,12 @@ if len(ctx.devices) > 0:
         pipelines.append(rs.pipeline())
         configs.append(rs.config())
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-        configs[device_num].enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
-        configs[device_num].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 30)
-        configs[device_num].enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 30)
+        configs[device_num].enable_stream(rs.stream.depth, 640,480, rs.format.z16, 60)
+        configs[device_num].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 60)
+        configs[device_num].enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
         #os.chmod(ctx.devices[device_num].get_info(rs.camera_info.serial_number), 0o777)
-        shutil.rmtree(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
+        if os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
+            shutil.rmtree(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
             os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         
@@ -109,7 +110,9 @@ START RECORDING SOME FRAMES
 """
 raw_color_images = len(serial_numbers) * [0]
 color_images = len(serial_numbers) * [0]
+color_frames = len(serial_numbers) * [0]
 depth_images = len(serial_numbers) * [0]
+depth_frames = len(serial_numbers) * [0]
 depth_colormaps = len(serial_numbers) * [0]
 
 try:
@@ -120,15 +123,25 @@ try:
             frames = pipelines[i].wait_for_frames()
             raw_color_frame = frames.get_color_frame()
             aligned_frames = align[i].process(frames)
-            color_frame = aligned_frames.get_color_frame()
-            depth_frame = aligned_frames.get_depth_frame()
-            if not color_frame or not depth_frame:
+            color_frames[i] = aligned_frames.get_color_frame()
+            depth_frames[i] = aligned_frames.get_depth_frame()
+            timestamp = depth_frames[i].get_timestamp()
+            if not color_frames[i] or not depth_frames[i]:
                 continue
+        
+        for i in range(len(serial_numbers)):
+            depth_frames[i] = rs.decimation_filter(1).process(depth_frames[i])
+            depth_frames[i] = rs.disparity_transform(True).process(depth_frames[i])
+            depth_frames[i] = rs.spatial_filter().process(depth_frames[i])
+            depth_frames[i] = rs.temporal_filter().process(depth_frames[i])
+            depth_frames[i] = rs.disparity_transform(False).process(depth_frames[i])
+
+            #print("Camera " + str(i) + ": " + str(timestamp))
 
             # Convert images to numpy arrays
             raw_color_images[i] = np.asanyarray(raw_color_frame.get_data())
-            color_images[i] = np.asanyarray(color_frame.get_data())
-            depth_images[i] = np.asanyarray(depth_frame.get_data())
+            color_images[i] = np.asanyarray(color_frames[i].get_data())
+            depth_images[i] = np.asanyarray(depth_frames[i].get_data())
 
             depth_colormaps[i] = cv.applyColorMap(cv.convertScaleAbs(depth_images[i], alpha=0.03), cv.COLORMAP_JET)
 

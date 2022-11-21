@@ -112,8 +112,8 @@ for i in range(len(video_paths)):
     pipelines.append(rs.pipeline())
     configs.append(rs.config())
     rs.config.enable_device_from_file(configs[i], video_paths[i])
-    configs[i].enable_stream(rs.stream.depth, rs.format.z16, 30)
-    configs[i].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 30)
+    configs[i].enable_stream(rs.stream.depth, rs.format.z16, 60)
+    configs[i].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 60)
     pipelines[i].start(configs[i])
 
 combiner = Camera.Combiner(cam)
@@ -156,7 +156,7 @@ while True:
         pcd_list.append(combiner.pcd_o3d)
         #combiner.visualize()
         print(len(pcd_list))
-        if len(pcd_list) == 120:
+        if len(pcd_list) == 180:
             break
 
 
@@ -180,5 +180,5 @@ for i in range(len(pcd_list)):
     vis.poll_events()
     vis.update_renderer()
     vis.remove_geometry(geometry)
-    time.sleep(1)
+    time.sleep(0.25)
     #input("Press Enter to continue...")
