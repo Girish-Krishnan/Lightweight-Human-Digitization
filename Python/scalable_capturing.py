@@ -11,6 +11,8 @@ configs = []
 align = []
 profiles = []
 
+IMG_SIZE = [640, 480]
+
 # RUN THIS ONCE AND THEN COMMENT IT OUT
 #
 # ctx = rs.context()
@@ -69,7 +71,7 @@ if len(ctx.devices) > 0:
         s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
         configuration_parameters["cams"][s_num] = {}
         configuration_parameters["cams"][s_num]["intrinsics"] = {}
-        configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = [640, 480]
+        configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = IMG_SIZE
         configuration_parameters["cams"][s_num]["intrinsics"]["focal_length"] = [color_intrinsics.fx,
                                                                                        color_intrinsics.fy]
         configuration_parameters["cams"][s_num]["intrinsics"]["img_center"] = [color_intrinsics.ppx,
@@ -109,6 +111,7 @@ START RECORDING SOME FRAMES
 
 """
 raw_color_images = len(serial_numbers) * [0]
+raw_color_frames = len(serial_numbers) * [0]
 color_images = len(serial_numbers) * [0]
 color_frames = len(serial_numbers) * [0]
 depth_images = len(serial_numbers) * [0]
@@ -121,7 +124,7 @@ try:
         for i in range(len(serial_numbers)):
 
             frames = pipelines[i].wait_for_frames()
-            raw_color_frame = frames.get_color_frame()
+            raw_color_frames[i] = frames.get_color_frame()
             aligned_frames = align[i].process(frames)
             color_frames[i] = aligned_frames.get_color_frame()
             depth_frames[i] = aligned_frames.get_depth_frame()
@@ -139,7 +142,7 @@ try:
             #print("Camera " + str(i) + ": " + str(timestamp))
 
             # Convert images to numpy arrays
-            raw_color_images[i] = np.asanyarray(raw_color_frame.get_data())
+            raw_color_images[i] = np.asanyarray(raw_color_frames[i].get_data())
             color_images[i] = np.asanyarray(color_frames[i].get_data())
             depth_images[i] = np.asanyarray(depth_frames[i].get_data())
 

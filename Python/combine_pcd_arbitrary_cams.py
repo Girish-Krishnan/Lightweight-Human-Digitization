@@ -83,22 +83,6 @@ for i in range(len(cams_list)):
                                  CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation))
         path = find_path_to_cam_0(cams_list[i])
 
-    # elif i == 3:
-    #     path = ['819312073170', '007522060984', '839212060064']
-    #     rotation = np.eye(3)
-    #     previous_rotation = np.eye(3)
-    #     translation = np.array([0,0,0])
-    #     for j in range(1,len(path)):
-    #         idx = cams_list.index(path[j-1])
-    #         translation = np.add(CAM_DATA[idx][path[j]]["translation"], np.matmul(previous_rotation,translation))
-    #         previous_rotation = CAM_DATA[idx][path[j]]["rotation"]
-    #         rotation = np.matmul(previous_rotation, rotation)
-    #     print("Current Cam: ", cams_list[i])
-    #     print("path to cam0: ", path)
-    #     print("Final rotation: \n", rotation)
-    #     print("Final translation: ", translation)
-    #     print("___")
-    #     cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"],CAM_DATA[i]["intrinsics"]["ir_focal_length"],CAM_DATA[i]["intrinsics"]["ir_img_center"],rotation,translation))
 
     else:
         path = find_path_to_cam_0(cams_list[i])

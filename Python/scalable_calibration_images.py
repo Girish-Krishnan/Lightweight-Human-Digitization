@@ -94,10 +94,10 @@ for pair in image_pairs:
 # RUN THIS ONCE AND THEN COMMENT IT
 #
 # ctx = rs.context()
-# devices = ctx.query_devices()
+# devices = ctx.query_devices() 
 # for dev in devices:
 #     dev.hardware_reset()
-
+serial_numbers = []
 ctx = rs.context()
 if len(ctx.devices) > 0:
 
@@ -123,6 +123,7 @@ if len(ctx.devices) > 0:
         ir_intrinsics = ir_profile.get_intrinsics()
 
         s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
+        serial_numbers.append(s_num)
         configuration_parameters["cams"][s_num]["intrinsics"] = {}
         configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = [640, 480]
         configuration_parameters["cams"][s_num]["intrinsics"]["focal_length"] = [color_intrinsics.fx,
@@ -179,9 +180,8 @@ ir_images_processed = len(serial_numbers) * [0]
 image_count = 0
 exposure_d415 = 70000
 gain_d415 = 30
-exposure_d435 = 8000
-gain_d435 = 20
 
+set_gain = False
 
 try:
     while True:
@@ -191,7 +191,12 @@ try:
             sensor = profiles[i].get_device().query_sensors()[0]
             #print(serial_numbers[i])
         
-            # sensor.set_option(rs.option.gain, gain_d415)
+            if set_gain == False:
+                try:
+                    sensor.set_option(rs.option.gain, gain_d415)
+                finally:
+                    set_gain = True
+            
             sensor.set_option(rs.option.exposure, exposure_d415)
 
             frames = pipelines[i].wait_for_frames()
