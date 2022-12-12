@@ -11,8 +11,10 @@ import glob
 import json
 from itertools import combinations
 import cv2.aruco as aruco
-# from scipy.spatial.transform import Rotation
+from scipy.spatial.transform import Rotation
+from scipy.optimize import least_squares
 from utils.trajectory_io import *
+import traceback
 
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
@@ -21,6 +23,7 @@ CHARUCOBOARD_ROWCOUNT = 9
 CHARUCOBOARD_COLCOUNT = 12
 
 distCoeffs = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+bundle_adjustment = False
 
 # Create grid board object we're using in our stream
 CHARUCO_BOARD = aruco.CharucoBoard_create(
@@ -55,7 +58,44 @@ objp[:, :2] = np.mgrid[0:CHECKERBOARD[1], 0:CHECKERBOARD[0]].T.reshape(-1, 2)
 objp = CHECKERBOARD_SIZE * objp
 # print(objp)
 
-# Exception handling when no camera images were found:
+def compute_distance(op, left_mtx, left_dist, left_pts,
+                     right_mtx, right_dist, right_pts, R, T):
+    """compute the distance between each calibration target corner."""
+    
+    left, left_r, left_t = cv2.solvePnP(op, left_pts, left_mtx, left_dist, 0)
+    right, right_r, right_t = cv2.solvePnP(op, right_pts, right_mtx, right_dist, 0)
+    left_r = cv2.Rodrigues(left_r)[0]
+    right_r = cv2.Rodrigues(right_r)[0]
+    left_p = left_r.dot(op.T) + left_t
+    right_p = right_r.dot(op.T) + right_t
+    right_p = R.T.dot(right_p - T)
+    return (np.abs(left_p - right_p) * 1000).ravel()  
+
+def get_intrinsics(vals):
+    # just optimise f
+    f = vals[0]
+    m = np.eye(3)
+    m[0, 0] = f
+    m[1, 1] = f
+    m[0, 2] = 360
+    m[1, 2] = 640
+    d = np.array([vals[1], vals[2], 0, 0, vals[3]])
+    return m, d
+
+def fun(parameters, obj_pts, left_pts, right_pts, left_mtx, left_dist, right_mtx, right_dist):
+    """
+    Compute residuals:
+    `parameters` contains camera parameters and R and T.
+    """
+    r = cv2.Rodrigues(np.array(parameters[0:3]))[0]
+    t = np.array(parameters[3:]).reshape(-1,1)
+    residuals = []
+    for i, (op, lp, rp) in enumerate(zip(obj_pts, left_pts, right_pts)):
+        dist = compute_distance(op,left_mtx, left_dist, lp,
+                                     right_mtx, right_dist, rp, r, t)
+        residuals.append(dist)
+        
+    return np.hstack(residuals)
 
 if NUM_CAMS == 0:
     print("No camera images found. Please check the directory.")
@@ -169,8 +209,28 @@ for pair in image_pairs:
         try:
             rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs,
                                                             cam2_mtx, distCoeffs, [640, 480], criteria_stereo, flags)
+
+            
+            if bundle_adjustment:
+                r = cv2.Rodrigues(R)[0].flatten().tolist()
+                t = T.flatten().tolist()
+
+                cost_function = np.array(r + t)
+
+                res = least_squares(fun, cost_function, verbose=2, method ='trf', xtol=3e-16, ftol=3e-16, gtol=3e-16,
+                            loss='linear', f_scale=0.001,
+                            args=(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs, cam2_mtx, distCoeffs))
+
+                R2 = np.array(Rotation.from_euler('xyz',(res.x)[0:3],degrees=False).as_matrix())
+                T2 = np.array((res.x)[3:]).reshape(-1,1)
+            else:
+                R2 = R
+                T2 = T
+
+
         # skip useless transformation
         except:
+            traceback.print_exc()
             continue
     else:
         continue
@@ -179,9 +239,16 @@ for pair in image_pairs:
     T = T.tolist()
     T = [T[0][0],T[1][0],T[2][0]]
 
+    T2 = T2.tolist()
+    T2 = [T2[0][0],T2[1][0],T2[2][0]]
+
     trans = np.vstack( (np.hstack((R, np.array(T).reshape(-1,1))), [0,0,0,1]) )
     inv_trans = np.linalg.inv(trans)  # transform coordinates in 2nd cam frame to 1st cam frame
     # gives the position of the 2nd cam w.r.t the 1st cam frame
+
+    trans_2 = np.vstack( (np.hstack((R2, np.array(T2).reshape(-1,1))), [0,0,0,1]) )
+    inv_trans_2 = np.linalg.inv(trans_2)  # transform coordinates in 2nd cam frame to 1st cam frame
+    # gives the position of the 2nd cam w.r.t the 1st cam frame    
 
     r_mat = inv_trans[0:3, 0:3]
     # r = Rotation.from_matrix(r_mat)
@@ -192,8 +259,8 @@ for pair in image_pairs:
 
 
     configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]] = {}
-    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["translation"] = trans[0:3, 3].tolist()
-    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["rotation"] = trans[0:3, 0:3].tolist()
+    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["translation"] = trans_2[0:3, 3].tolist()
+    configuration_parameters["cams"][serial_numbers[x]][serial_numbers[y]]["rotation"] = trans_2[0:3, 0:3].tolist()
 
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]] = {}
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["translation"] = t.tolist()
