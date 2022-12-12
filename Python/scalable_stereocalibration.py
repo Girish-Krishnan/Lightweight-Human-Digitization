@@ -23,7 +23,7 @@ CHARUCOBOARD_ROWCOUNT = 9
 CHARUCOBOARD_COLCOUNT = 12
 
 distCoeffs = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
-bundle_adjustment = False
+bundle_adjustment = True
 
 # Create grid board object we're using in our stream
 CHARUCO_BOARD = aruco.CharucoBoard_create(
@@ -218,7 +218,7 @@ for pair in image_pairs:
                 cost_function = np.array(r + t)
 
                 res = least_squares(fun, cost_function, verbose=2, method ='trf', xtol=3e-16, ftol=3e-16, gtol=3e-16,
-                            loss='linear', f_scale=0.001,
+                            loss='soft_l1', f_scale=0.001,
                             args=(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs, cam2_mtx, distCoeffs))
 
                 R2 = np.array(Rotation.from_euler('xyz',(res.x)[0:3],degrees=False).as_matrix())
