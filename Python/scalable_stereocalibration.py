@@ -11,7 +11,7 @@ import glob
 import json
 from itertools import combinations
 import cv2.aruco as aruco
-from scipy.spatial.transform import Rotation
+# from scipy.spatial.transform import Rotation
 from utils.trajectory_io import *
 
 # Constant parameters used in Aruco methods
@@ -184,9 +184,9 @@ for pair in image_pairs:
     # gives the position of the 2nd cam w.r.t the 1st cam frame
 
     r_mat = inv_trans[0:3, 0:3]
-    r = Rotation.from_matrix(r_mat)
-    angle = r.as_euler('xyz', degrees=True)
-    print('angle: ', angle)
+    # r = Rotation.from_matrix(r_mat)
+    # angle = r.as_euler('xyz', degrees=True)
+    # print('angle: ', angle)
     t = inv_trans[0:3, 3]
     print('translation: ', t)
 

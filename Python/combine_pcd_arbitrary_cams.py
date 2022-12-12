@@ -8,7 +8,7 @@ import cv2 as cv
 import open3d as o3d
 import copy
 import sys 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 """
 GET CALIBRATION DATA
@@ -110,7 +110,7 @@ for i in range(len(cams_list)):
 
 combiner = Camera.Combiner(cam)
 combiner.combine()
-#combiner.rotate_point_cloud(np.array([[-1,0,0],[0,1,0],[0,0,1]]))
+# combiner.rotate_point_cloud(np.array([[1,0,0],[0,-1,0],[0,0,1]]))
 #np.save("./data/Point_Clouds/point_cloud_combined.npy", combiner.complete_pcd)
 combiner.visualize()
 

@@ -3,7 +3,7 @@ IMPORTS
 """
 import cv2 as cv
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import open3d as o3d
 import copy
 
@@ -32,7 +32,18 @@ class Camera:
         plt.title("Depth Map")
         plt.show()          
 
-    def point_cloud(self):
+    def point_cloud(self): 
+
+        mask = np.logical_or(self.depth_map > 2, self.depth_map < 0.75)
+        grads = np.gradient(self.depth_map)
+        grad = np.sqrt(grads[0] ** 2 + grads[1] ** 2)
+
+        mask[grad > 0.05] = True
+
+        erode_mask = cv.dilate(mask.astype(np.uint8), np.ones((7,7), dtype=np.uint8))
+
+        self.depth_map[mask] = 0
+
         self.pcd = np.hstack(
             (np.transpose(np.nonzero(self.depth_map)), np.reshape(self.depth_map[np.nonzero(self.depth_map)], (-1,1)) )
         )  # (xxx, 3)
@@ -53,16 +64,22 @@ class Camera:
         self.pcd_o3d = o3d.geometry.PointCloud()
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] < 2)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] > 0.75)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -0.75)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] < 0.75)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,1] < 0.5)[0])
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] < 2)[0])
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,2] > 0.75)[0])
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] > -0.75)[0])
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,0] < 0.75)[0])
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:,1] < 0.5)[0])
+
+        self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.05)
+
+        self.pcd = np.asarray(self.pcd_o3d.points)
+        self.colors = np.asarray(self.pcd_o3d.colors)
+
         o3d.visualization.draw_geometries([self.pcd_o3d])
 
 
@@ -80,26 +97,28 @@ class Combiner:
 
         self.pcd = np.concatenate(tuple([i.pcd for i in self.cam_array]),axis=0)
         #self.pcd = np.matmul(rotate,self.pcd.T).T
-        self.rotate_point_cloud(np.array([[-1,0,0],[0,-1,0],[0,0,-1]]))
+        self.rotate_point_cloud(np.array([[1,0,0],[0,-1,0],[0,0,-1]]))
 
         self.colors = np.concatenate(tuple([i.colors for i in self.cam_array]),axis=0)
         self.complete_pcd = np.hstack((self.pcd,self.colors))
 
         self.pcd_o3d = o3d.geometry.PointCloud()
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
-        self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
+        self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors)
         
-        # cropping
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] < -1)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] > -2)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] > -0.25)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] < 0.5)[0])
-        points = np.asarray(self.pcd_o3d.points)
-        self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 1] > -0.75)[0])
+        # # cropping
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] < -1)[0])
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 2] > -2)[0])
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] > -0.25)[0])
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 0] < 0.5)[0])
+        # points = np.asarray(self.pcd_o3d.points)
+        # self.pcd_o3d = self.pcd_o3d.select_by_index(np.where(points[:, 1] > -0.75)[0])
+
+        # self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.05)
         o3d.io.write_point_cloud("./data.ply", self.pcd_o3d)
         
         
