@@ -107,6 +107,10 @@ for i in range(len(cams_list)):
 video_paths = ['./'+c+'/video.bag' for c in cams_list]
 pipelines = []
 configs = []
+profiles = []
+playbacks = []
+video_duration = 0
+frame_rate = 60
 
 for i in range(len(video_paths)):
     pipelines.append(rs.pipeline())
@@ -114,7 +118,16 @@ for i in range(len(video_paths)):
     rs.config.enable_device_from_file(configs[i], video_paths[i])
     configs[i].enable_stream(rs.stream.depth, rs.format.z16, 60)
     configs[i].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 60)
-    pipelines[i].start(configs[i])
+    profiles.append(pipelines[i].start(configs[i]))
+    playbacks.append(profiles[i].get_device().as_playback())
+    # playbacks[i].set_real_time(False)
+    video_duration = playbacks[i].get_duration().total_seconds()
+    print(video_duration)
+
+
+num_frames = int(video_duration * frame_rate)
+
+print('Number of frames: ',num_frames)
 
 combiner = Camera.Combiner(cam)
 
@@ -154,9 +167,11 @@ while True:
             
         combiner.combine()
         pcd_list.append(combiner.pcd_o3d)
-        #combiner.visualize()
+        
+        o3d.io.write_point_cloud("./reconstructed_video/frame_" + str(len(pcd_list)) + ".ply", combiner.pcd_o3d)
+
         print(len(pcd_list))
-        if len(pcd_list) == 180:
+        if len(pcd_list) == num_frames:
             break
 
 
@@ -164,6 +179,7 @@ while True:
 VISUALIZATION
 """
 
+"""
 vis = o3d.visualization.Visualizer()
 vis.create_window()
 
@@ -180,5 +196,7 @@ for i in range(len(pcd_list)):
     vis.poll_events()
     vis.update_renderer()
     vis.remove_geometry(geometry)
-    time.sleep(0.25)
+    time.sleep(1/60)
     #input("Press Enter to continue...")
+
+    """

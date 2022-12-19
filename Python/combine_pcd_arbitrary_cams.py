@@ -6,9 +6,7 @@ import numpy as np
 import json
 import cv2 as cv
 import open3d as o3d
-import copy
 import sys 
-# import matplotlib.pyplot as plt
 
 """
 GET CALIBRATION DATA
@@ -106,12 +104,13 @@ for i in range(len(cams_list)):
     cam[i].add_image(cv.imread("./" + cams_list[i] + "/sample_images/image.jpg"),
                      np.load("./" + cams_list[i] + "/sample_images/depth_map.npy") * 0.001)
     cam[i].point_cloud()
+    o3d.io.write_point_cloud("./" + cams_list[i] + '/individual_pcd' + ".ply", cam[i].pcd_o3d)
     cam[i].visualize()
 
 combiner = Camera.Combiner(cam)
 combiner.combine()
-# combiner.rotate_point_cloud(np.array([[1,0,0],[0,-1,0],[0,0,1]]))
-#np.save("./data/Point_Clouds/point_cloud_combined.npy", combiner.complete_pcd)
+o3d.io.write_point_cloud("./point_cloud_combined.ply", combiner.pcd_o3d)
+
 combiner.visualize()
 
 
