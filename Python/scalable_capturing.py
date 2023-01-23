@@ -45,7 +45,7 @@ if len(ctx.devices) > 0:
         
         print ('Found device: ', ctx.devices[device_num].get_info(rs.camera_info.name), ' ', ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         serial_numbers.append(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-        pipelines.append(rs.pipeline())
+        pipelines.append((rs.pipeline(), device_num))
         configs.append(rs.config())
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         configs[device_num].enable_stream(rs.stream.depth, 640,480, rs.format.z16, 60)
@@ -70,10 +70,10 @@ if len(ctx.devices) > 0:
         # Align objects
         align_to = rs.stream.depth  # align to depth frame
         align.append(rs.align(align_to))
-        pipelines[device_num].start(configs[device_num])
+        pipelines[device_num][0].start(configs[device_num])
 
         # enable IR emitter and auto exposure
-        profile = pipelines[device_num].get_active_profile()
+        profile = pipelines[device_num][0].get_active_profile()
 
         profiles.append(profile)
         color_profile = rs.video_stream_profile(profile.get_stream(rs.stream.color))
@@ -135,9 +135,9 @@ depth_colormaps = len(serial_numbers) * [0]
 
 # Define a function to capture image and depth map for each pipeline
 
-def capture_frame(i):
+def capture_frame(pipeline,i):
     while True:
-        frames = pipelines[i].wait_for_frames()
+        frames = pipeline.wait_for_frames()
         raw_color_frames[i] = frames.get_color_frame()
         aligned_frames = align[i].process(frames)
         color_frames[i] = aligned_frames.get_color_frame()
@@ -153,12 +153,12 @@ def capture_frame(i):
         
         # Display images using imshow
 
-        if i == len(serial_numbers) - 1:
-            stacked_color_images = np.hstack(tuple(color_images))
-            stacked_depth_images = np.hstack(tuple(depth_colormaps))
-            images = np.vstack((stacked_color_images, stacked_depth_images))
-            cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
-            cv.imshow('RealSense', images)
+        if (i == len(serial_numbers) - 1) and (0 not in depth_colormaps) and (0 not in color_images):
+                stacked_color_images = np.hstack(tuple(color_images))
+                stacked_depth_images = np.hstack(tuple(depth_colormaps))
+                images = np.vstack((stacked_color_images, stacked_depth_images))
+                cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
+                cv.imshow('RealSense', images)
         
         ch = cv.waitKey(1)
         if ch==32: 
@@ -186,14 +186,14 @@ def capture_frame(i):
     if i == len(serial_numbers) - 1:
         cv.destroyAllWindows()
 
-    pipelines[i].stop()
+    pipeline.stop()
 
 
 # Create a thread for each pipeline
 
 threads = []
-for i in range(len(serial_numbers)):
-    thread = threading.Thread(target=capture_frame, args=(i))
+for pipeline, i in pipelines:
+    thread = threading.Thread(target=capture_frame, args=(pipeline,i))
     thread.start()
     threads.append(thread)
 
