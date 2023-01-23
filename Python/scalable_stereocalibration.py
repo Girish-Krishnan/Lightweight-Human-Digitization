@@ -15,6 +15,12 @@ from scipy.spatial.transform import Rotation
 from scipy.optimize import least_squares
 from utils.trajectory_io import *
 import traceback
+import argparse
+
+parser = argparse.ArgumentParser(description='Stereo calibration')
+parser.add_argument('--bundle_adjust',help='implement bundle adjustment')
+
+args = parser.parse_args()
 
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
@@ -23,7 +29,6 @@ CHARUCOBOARD_ROWCOUNT = 9
 CHARUCOBOARD_COLCOUNT = 12
 
 distCoeffs = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
-bundle_adjustment = True
 
 # Create grid board object we're using in our stream
 CHARUCO_BOARD = aruco.CharucoBoard_create(
@@ -211,7 +216,7 @@ for pair in image_pairs:
                                                             cam2_mtx, distCoeffs, [640, 480], criteria_stereo, flags)
 
             
-            if bundle_adjustment:
+            if args.bundle_adjust:
                 r = cv2.Rodrigues(R)[0].flatten().tolist()
                 t = T.flatten().tolist()
 
