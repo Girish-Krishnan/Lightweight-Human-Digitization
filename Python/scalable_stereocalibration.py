@@ -16,6 +16,7 @@ from scipy.optimize import least_squares
 from utils.trajectory_io import *
 import traceback
 import argparse
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='Stereo calibration')
 parser.add_argument('--bundle_adjust',help='implement bundle adjustment')
@@ -220,11 +221,15 @@ for pair in image_pairs:
                 r = cv2.Rodrigues(R)[0].flatten().tolist()
                 t = T.flatten().tolist()
 
-                cost_function = np.array(r + t)
+                params_rt = np.array(r + t)
 
-                res = least_squares(fun, cost_function, verbose=2, method ='trf', xtol=3e-16, ftol=3e-16, gtol=3e-16,
+                plt.plot(fun(params_rt, objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs, cam2_mtx, distCoeffs))
+
+                res = least_squares(fun, params_rt, verbose=2, method ='trf', xtol=3e-16, ftol=3e-16, gtol=3e-16,
                             loss='soft_l1', f_scale=0.001,
                             args=(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs, cam2_mtx, distCoeffs))
+                
+                plt.plot(res.fun)
 
                 R2 = np.array(Rotation.from_euler('xyz',(res.x)[0:3],degrees=False).as_matrix())
                 T2 = np.array((res.x)[3:]).reshape(-1,1)

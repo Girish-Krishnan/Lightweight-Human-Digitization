@@ -6,6 +6,26 @@ import json
 import cv2.aruco as aruco
 import glob
 from itertools import combinations
+import threading
+import argparse
+
+parser = argparse.ArgumentParser(description='Capture images for calibration')
+parser.add_argument('--hardware_reset',help='reset all camera hardware')
+parser.add_argument('--data_reset',help='delete all capturing data')
+args = parser.parse_args()
+
+if args.hardware_reset:
+    print("Resetting all camera hardware")
+    ctx = rs.context()
+    devices = ctx.query_devices()
+    for dev in devices:
+        dev.hardware_reset()
+
+    print("Resetting complete")
+    print('Exiting program')
+    print('------------------------------------')
+    print('Please run the code again without the --hardware_reset flag')
+    exit()
 
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
@@ -51,7 +71,6 @@ serial_numbers = list(configuration_parameters["cams"].keys())
 objp = np.zeros((CHECKERBOARD[1] * CHECKERBOARD[0], 3), np.float32)
 objp[:, :2] = np.mgrid[0:CHECKERBOARD[1], 0:CHECKERBOARD[0]].T.reshape(-1, 2)
 objp = CHECKERBOARD_SIZE * objp
-# print(objp)
 
 # Exception handling when no camera images were found:
 
@@ -91,12 +110,7 @@ for pair in image_pairs:
     objpoints = []  # Creating vector to store vectors of 3D points for each checkerboard image
     imgpoints_1 = []
 
-# RUN THIS ONCE AND THEN COMMENT IT
-#
-# ctx = rs.context()
-# devices = ctx.query_devices() 
-# for dev in devices:
-#     dev.hardware_reset()
+
 serial_numbers = []
 ctx = rs.context()
 if len(ctx.devices) > 0:
@@ -104,16 +118,16 @@ if len(ctx.devices) > 0:
     for device_num in range(len(ctx.devices)):
         print ('Found device: ', ctx.devices[device_num].get_info(rs.camera_info.name), ' ', ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         #serial_numbers.append(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-        pipelines.append(rs.pipeline())
+        pipelines.append((rs.pipeline(),i))
         configs.append(rs.config())
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         # configs[device_num].enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
         configs[device_num].enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         configs[device_num].enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 30)
         # configs[device_num].enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)
-        pipelines[device_num].start(configs[device_num])
+        pipelines[device_num][0].start(configs[device_num])
 
-        profile = pipelines[device_num].get_active_profile()
+        profile = pipelines[device_num][0].get_active_profile()
         profiles.append(profile)
         color_profile = rs.video_stream_profile(profile.get_stream(rs.stream.color))
         color_intrinsics = color_profile.get_intrinsics()
@@ -183,36 +197,28 @@ gain_d415 = 30
 
 set_gain = False
 
+# TODO: consider adding argparse to set the exposure and gain values
+
 for i in range(len(serial_numbers)):
 
     sensor = profiles[i].get_device().query_sensors()[0]
-    #print(serial_numbers[i])
 
-    if set_gain == False:
-        try:
-            sensor.set_option(rs.option.gain, gain_d415)
-        finally:
-            set_gain = True
+    try:
+        sensor.set_option(rs.option.gain, gain_d415)
+    finally:
+        pass
     
     sensor.set_option(rs.option.exposure, exposure_d415)
 
-try:
+
+# Define function to get calibration images for each camera
+
+def get_calibration_images(pipeline,i):
+
+
     while True:
 
-        for i in range(len(serial_numbers)):
-
-            # sensor = profiles[i].get_device().query_sensors()[0]
-            # #print(serial_numbers[i])
-        
-            # if set_gain == False:
-            #     try:
-            #         sensor.set_option(rs.option.gain, gain_d415)
-            #     finally:
-            #         set_gain = True
-            
-            # sensor.set_option(rs.option.exposure, exposure_d415)
-
-            frames = pipelines[i].wait_for_frames()
+            frames = pipeline.wait_for_frames()
 
             color_frame = frames.get_color_frame()
             if not color_frame:
@@ -226,7 +232,7 @@ try:
             ir_frame_original = np.asanyarray(ir_frame.get_data())
             ir_frame_processed = np.copy(color_images[i])
             corners_1, ids_1, rejectedImgPoints_1 = aruco.detectMarkers(ir_frame_original, ARUCO_DICT, parameters=ARUCO_PARAMETERS)
-            #print(len(corners_1))
+
             if len(corners_1) != 0:
             # Refine detected markers
             # Eliminates markers not part of our board, adds missing markers to the board
@@ -263,28 +269,44 @@ try:
             ir_images[i] = ir_frame_original
             ir_images_processed[i] = ir_frame_processed
 
-        # Stack all images horizontally
-        # images_color = np.hstack(tuple(color_images))
-        images_ir = np.hstack(tuple(ir_images_processed))
+            if (i == len(serial_numbers)-1) and (0 not in ir_images_processed):
+                # Stack all images horizontally
+                # images_color = np.hstack(tuple(color_images))
+                images_ir = np.hstack(tuple(ir_images_processed))
 
-        # Show images from all cameras
-        cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
-        cv.imshow('RealSense', images_ir)
-        ch = cv.waitKey(1)
-        if ch==32:
-            image_count +=1
-            print("Saving image: ", image_count)
-            for i in range(len(serial_numbers)):
-                cv.imwrite('./' + serial_numbers[i] + '/calibration_images/image_' + str(image_count) + '.jpg', ir_images[i])
+                # Show images from all cameras
+                cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
+                cv.imshow('RealSense', images_ir)
 
-            if image_count == num_images:
-                break
+            ch = cv.waitKey(1)
+            if ch==32:
+                image_count +=1
+                print("Saving image: ", image_count)
+                for i in range(len(serial_numbers)):
+                    cv.imwrite('./' + serial_numbers[i] + '/calibration_images/image_' + str(image_count) + '.jpg', ir_images[i])
 
-finally:
+                if image_count == num_images:
+                    break
+    
+    pipeline.stop()
 
-    # Stop streaming
-    for pipeline in pipelines:
-        pipeline.stop()
+    if i == len(serial_numbers)-1:
 
-    cv.destroyAllWindows()
+        cv.destroyAllWindows()
+
+
+# Create a thread for each pipeline
+
+threads = []
+for pipeline, i in pipelines:
+    thread = threading.Thread(target=get_calibration_images, args=(pipeline,i))
+    thread.start()
+    threads.append(thread)
+
+# Wait for all threads to finish
+
+for thread in threads:
+    thread.join()
+
+    
 
