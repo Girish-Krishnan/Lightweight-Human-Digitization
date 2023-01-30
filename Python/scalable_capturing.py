@@ -5,7 +5,7 @@ import numpy as np
 import json
 import argparse
 import shutil
-import threading
+import multiprocessing
 
 parser = argparse.ArgumentParser(description='Capture images for calibration')
 parser.add_argument('--hardware_reset',help='reset all camera hardware')
@@ -31,6 +31,12 @@ if args.hardware_reset:
     print('------------------------------------')
     print('Please run the code again without the --hardware_reset flag')
     exit()
+
+
+with(open("./configuration_parameters.json")) as f:
+    configuration_parameters = json.load(f)
+    num_images = configuration_parameters["num_calibration_imgs"]
+    f.close()
 
 ctx = rs.context()
 if len(ctx.devices) > 0:
@@ -183,15 +189,15 @@ def capture_frame(pipeline,i):
     pipeline.stop()
 
 
-# Create a thread for each pipeline
+# Create a process for each pipeline
 
-threads = []
+processes = []
 for pipeline, i in pipelines:
-    thread = threading.Thread(target=capture_frame, args=(pipeline,i))
-    thread.start()
-    threads.append(thread)
+    p = multiprocessing.Process(target=capture_frame, args=(pipeline,i))
+    p.start()
+    processes.append(p)
 
-# Wait for all threads to finish
+# Wait for all processes to finish
 
-for thread in threads:
-    thread.join()
+for p in processes:
+    p.join()

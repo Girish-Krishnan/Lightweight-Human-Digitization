@@ -6,7 +6,7 @@ import json
 import cv2.aruco as aruco
 import glob
 from itertools import combinations
-import threading
+import multiprocessing
 import argparse
 
 parser = argparse.ArgumentParser(description='Capture images for calibration')
@@ -295,18 +295,17 @@ def get_calibration_images(pipeline,i):
         cv.destroyAllWindows()
 
 
-# Create a thread for each pipeline
+# Create a process for each pipeline
 
-threads = []
+processes = []
 for pipeline, i in pipelines:
-    thread = threading.Thread(target=get_calibration_images, args=(pipeline,i))
-    thread.start()
-    threads.append(thread)
+    p = multiprocessing.Process(target=get_calibration_images, args=(pipeline,i))
+    p.start()
+    processes.append(p)
 
-# Wait for all threads to finish
+# Wait for all processes to finish
 
-for thread in threads:
-    thread.join()
+for p in processes:
+    p.join()
 
     
-
