@@ -32,12 +32,6 @@ if args.hardware_reset:
     print('Please run the code again without the --hardware_reset flag')
     exit()
 
-
-with(open("./configuration_parameters.json")) as f:
-    configuration_parameters = json.load(f)
-    num_images = configuration_parameters["num_calibration_imgs"]
-    f.close()
-
 ctx = rs.context()
 if len(ctx.devices) > 0:
 
