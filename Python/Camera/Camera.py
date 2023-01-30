@@ -101,13 +101,13 @@ class Combiner:
 
         self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.05)
 
-        self.pcd_o3d.normals = o3d.utility.Vector3dVector(np.zeros((1,3)))
+        #self.pcd_o3d.normals = o3d.utility.Vector3dVector(np.zeros((1,3)))
 
-        self.pcd_o3d.estimate_normals()
-        self.pcd_o3d.orient_normals_consistent_tangent_plane(100)
+        #self.pcd_o3d.estimate_normals()
+        #self.pcd_o3d.orient_normals_consistent_tangent_plane(100)
 
-        with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
-            self.pcd_o3d, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d, depth=15)
+        #with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
+        #    self.pcd_o3d, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d, depth=15)
 
     def rotate_point_cloud(self,rotate):    
         self.pcd = np.matmul(rotate,self.pcd.T).T
