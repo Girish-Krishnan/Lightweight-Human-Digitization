@@ -3,14 +3,14 @@ import os
 import cv2 as cv
 import numpy as np
 import json
-import shutil
 import argparse
+import shutil
+import concurrent.futures
 
 parser = argparse.ArgumentParser(description='Capture images for calibration')
 parser.add_argument('--hardware_reset',help='reset all camera hardware')
 parser.add_argument('--data_reset',help='delete all capturing data')
 args = parser.parse_args()
-
 serial_numbers = []
 pipelines = []
 configs = []
@@ -32,13 +32,6 @@ if args.hardware_reset:
     print('Please run the code again without the --hardware_reset flag')
     exit()
 
-# RUN THIS ONCE AND THEN COMMENT IT OUT
-#
-# ctx = rs.context()
-# devices = ctx.query_devices()
-# for dev in devices:
-#     dev.hardware_reset()
-
 
 with(open("./configuration_parameters.json")) as f:
     configuration_parameters = json.load(f)
@@ -52,14 +45,13 @@ if len(ctx.devices) > 0:
         
         print ('Found device: ', ctx.devices[device_num].get_info(rs.camera_info.name), ' ', ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         serial_numbers.append(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-        pipelines.append(rs.pipeline())
+        pipelines.append((rs.pipeline(), device_num))
         configs.append(rs.config())
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
         configs[device_num].enable_stream(rs.stream.depth, 640,480, rs.format.z16, 60)
         configs[device_num].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 60)
         configs[device_num].enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
         #os.chmod(ctx.devices[device_num].get_info(rs.camera_info.serial_number), 0o777)
-        
         if args.data_reset:
             print("Deleting all capturing data")
             if os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
@@ -78,10 +70,10 @@ if len(ctx.devices) > 0:
         # Align objects
         align_to = rs.stream.depth  # align to depth frame
         align.append(rs.align(align_to))
-        pipelines[device_num].start(configs[device_num])
+        pipelines[device_num][0].start(configs[device_num])
 
         # enable IR emitter and auto exposure
-        profile = pipelines[device_num].get_active_profile()
+        profile = pipelines[device_num][0].get_active_profile()
 
         profiles.append(profile)
         color_profile = rs.video_stream_profile(profile.get_stream(rs.stream.color))
@@ -141,104 +133,33 @@ depth_images = len(serial_numbers) * [0]
 depth_frames = len(serial_numbers) * [0]
 depth_colormaps = len(serial_numbers) * [0]
 
-# try:
-#     while True:
+# Define a function to capture image and depth map for each pipeline
 
-#         for i in range(len(serial_numbers)):
-
-#             frames = pipelines[i].wait_for_frames()
-#             raw_color_frames[i] = frames.get_color_frame()
-#             # aligned_frames = align[i].process(frames)
-#             # color_frames[i] = aligned_frames.get_color_frame()
-#             # depth_frames[i] = aligned_frames.get_depth_frame()
-#             # timestamp = depth_frames[i].get_timestamp()
-#             # if not color_frames[i] or not depth_frames[i]:
-#             #     continue
-        
-#         for i in range(len(serial_numbers)):
-#             # depth_frames[i] = rs.decimation_filter(1).process(depth_frames[i])
-#             # depth_frames[i] = rs.disparity_transform(True).process(depth_frames[i])
-#             # depth_frames[i] = rs.spatial_filter().process(depth_frames[i])
-#             # depth_frames[i] = rs.temporal_filter().process(depth_frames[i])
-#             # depth_frames[i] = rs.disparity_transform(False).process(depth_frames[i])
-
-#             #print("Camera " + str(i) + ": " + str(timestamp))
-
-#             # Convert images to numpy arrays
-#             raw_color_images[i] = np.asanyarray(raw_color_frames[i].get_data())
-#             # color_images[i] = np.asanyarray(color_frames[i].get_data())
-#             # depth_images[i] = np.asanyarray(depth_frames[i].get_data())
-
-#             # depth_colormaps[i] = cv.applyColorMap(cv.convertScaleAbs(depth_images[i], alpha=0.03), cv.COLORMAP_JET)
-
-#         # Stack all images horizontally
-#         stacked_color_images = np.hstack(tuple(raw_color_images))
-#         # stacked_depth_images = np.hstack(tuple(depth_colormaps))
-#         # images = np.vstack((stacked_color_images, stacked_depth_images))
-#         cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
-#         cv.imshow('RealSense', stacked_color_images)
-
-#         ch = cv.waitKey(1)
-#         if ch==32: 
-
-#             depth_frames[i] = rs.decimation_filter(1).process(depth_frames[i])
-#             depth_frames[i] = rs.disparity_transform(True).process(depth_frames[i])
-#             depth_frames[i] = rs.spatial_filter().process(depth_frames[i])
-#             depth_frames[i] = rs.temporal_filter().process(depth_frames[i])
-#             depth_frames[i] = rs.disparity_transform(False).process(depth_frames[i])
-
-#             raw_color_images[i] = np.asanyarray(raw_color_frames[i].get_data())
-#             color_images[i] = np.asanyarray(color_frames[i].get_data())
-#             depth_images[i] = np.asanyarray(depth_frames[i].get_data())
-
-#             depth_colormaps[i] = cv.applyColorMap(cv.convertScaleAbs(depth_images[i], alpha=0.03), cv.COLORMAP_JET)
-
-#             for i in range(len(serial_numbers)):
-#                 print('OK')
-#                 # cv.imwrite('./' + serial_numbers[i] + '/sample_images/raw_image.jpg', raw_color_images[i])
-#                 # cv.imwrite('./' + serial_numbers[i] + '/sample_images/image.jpg', color_images[i])
-#                 # np.save('./' + serial_numbers[i] + '/sample_images/depth_map.npy', depth_images[i])
-#                 # cv.imwrite('./' + serial_numbers[i] + '/sample_images/depth.png', depth_colormaps[i])
-#             break
-
-
-try:
+def capture_frame(pipeline,i):
     while True:
+        frames = pipeline.wait_for_frames()
+        raw_color_frames[i] = frames.get_color_frame()
+        aligned_frames = align[i].process(frames)
+        color_frames[i] = aligned_frames.get_color_frame()
+        depth_frames[i] = aligned_frames.get_depth_frame()
+        timestamp = depth_frames[i].get_timestamp()
+        if not color_frames[i] or not depth_frames[i]:
+            continue
 
-        for i in range(len(serial_numbers)):
-
-            frames = pipelines[i].wait_for_frames()
-            raw_color_frames[i] = frames.get_color_frame()
-            aligned_frames = align[i].process(frames)
-            color_frames[i] = aligned_frames.get_color_frame()
-            depth_frames[i] = aligned_frames.get_depth_frame()
-            timestamp = depth_frames[i].get_timestamp()
-            if not color_frames[i] or not depth_frames[i]:
-                continue
+        raw_color_images[i] = np.asanyarray(raw_color_frames[i].get_data())
+        color_images[i] = np.asanyarray(color_frames[i].get_data())
+        depth_images[i] = np.asanyarray(depth_frames[i].get_data())
+        depth_colormaps[i] = cv.applyColorMap(cv.convertScaleAbs(depth_images[i], alpha=0.03), cv.COLORMAP_JET)
         
-        for i in range(len(serial_numbers)):
-            # depth_frames[i] = rs.decimation_filter(1).process(depth_frames[i])
-            # depth_frames[i] = rs.disparity_transform(True).process(depth_frames[i])
-            # depth_frames[i] = rs.spatial_filter().process(depth_frames[i])
-            # depth_frames[i] = rs.temporal_filter().process(depth_frames[i])
-            # depth_frames[i] = rs.disparity_transform(False).process(depth_frames[i])
+        # Display images using imshow
 
-            #print("Camera " + str(i) + ": " + str(timestamp))
-
-            # Convert images to numpy arrays
-            raw_color_images[i] = np.asanyarray(raw_color_frames[i].get_data())
-            color_images[i] = np.asanyarray(color_frames[i].get_data())
-            depth_images[i] = np.asanyarray(depth_frames[i].get_data())
-
-            depth_colormaps[i] = cv.applyColorMap(cv.convertScaleAbs(depth_images[i], alpha=0.03), cv.COLORMAP_JET)
-
-        # Stack all images horizontally
-        stacked_color_images = np.hstack(tuple(color_images))
-        stacked_depth_images = np.hstack(tuple(depth_colormaps))
-        images = np.vstack((stacked_color_images, stacked_depth_images))
-        cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
-        cv.imshow('RealSense', images)
-
+        if (i == len(serial_numbers) - 1) and (0 not in depth_colormaps) and (0 not in color_images):
+                stacked_color_images = np.hstack(tuple(color_images))
+                stacked_depth_images = np.hstack(tuple(depth_colormaps))
+                images = np.vstack((stacked_color_images, stacked_depth_images))
+                cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
+                cv.imshow('RealSense', images)
+        
         ch = cv.waitKey(1)
         if ch==32: 
             
@@ -260,16 +181,15 @@ try:
                 np.save('./' + serial_numbers[i] + '/sample_images/depth_map.npy', depth_images[i])
                 cv.imwrite('./' + serial_numbers[i] + '/sample_images/depth.png', depth_colormaps[i])
             break
-
-finally:
-
-    # Stop streaming
-    for pipeline in pipelines:
-        pipeline.stop()
-
-    cv.destroyAllWindows()
-
-
-######################################################################################################################
-
     
+    
+    if i == len(serial_numbers) - 1:
+        cv.destroyAllWindows()
+
+    pipeline.stop()
+
+
+# Create a process pool to capture image and depth map from all pipelines
+with concurrent.futures.ProcessPoolExecutor() as executor:
+    results = [executor.submit(capture_frame, pipeline, device_id) for pipeline, device_id in pipelines]
+    concurrent.futures.wait(results)
