@@ -176,10 +176,10 @@ def capture_frame(pipeline,i):
             depth_colormaps[i] = cv.applyColorMap(cv.convertScaleAbs(depth_images[i], alpha=0.03), cv.COLORMAP_JET)
 
             for i in range(len(serial_numbers)):
-                cv.imwrite('./' + serial_numbers[i] + '/sample_images/raw_image.jpg', raw_color_images[i])
-                cv.imwrite('./' + serial_numbers[i] + '/sample_images/image.jpg', color_images[i])
-                np.save('./' + serial_numbers[i] + '/sample_images/depth_map.npy', depth_images[i])
-                cv.imwrite('./' + serial_numbers[i] + '/sample_images/depth.png', depth_colormaps[i])
+                cv.imwrite('./' + serial_numbers[i] + '/sample_images/raw_image_cf.jpg', raw_color_images[i])
+                cv.imwrite('./' + serial_numbers[i] + '/sample_images/image_cf.jpg', color_images[i])
+                np.save('./' + serial_numbers[i] + '/sample_images/depth_map_cf.npy', depth_images[i])
+                cv.imwrite('./' + serial_numbers[i] + '/sample_images/depth_cf.png', depth_colormaps[i])
             break
     
     
