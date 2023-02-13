@@ -106,7 +106,7 @@ if len(ctx.devices) > 0:
         depth_sensor.set_option(rs.option.laser_power, 360)  # max laser power
         print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
-    json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)    
+    #json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)    
 
 else:
 
@@ -147,7 +147,7 @@ def capture_frame(pipeline,i):
         
         # Display images using imshow
 
-        if (i == len(serial_numbers) - 1) and (0 not in depth_colormaps) and (0 not in color_images):
+        if (i == len(serial_numbers) - 1):
                 stacked_color_images = np.hstack(tuple(color_images))
                 stacked_depth_images = np.hstack(tuple(depth_colormaps))
                 images = np.vstack((stacked_color_images, stacked_depth_images))

@@ -39,13 +39,6 @@ def capture_frame(device_id):
             cv2.imwrite("color_" + str(device_id) + ".jpg", color_image)
             cv2.imwrite("depth_" + str(device_id) + ".jpg", depth_image)
 
-# Create a process for each pipeline
-processes = []
-for device_id in device_ids:
-    p = multiprocessing.Process(target=capture_frame, args=(device_id,))
-    p.start()
-    processes.append(p)
 
-# Wait for all processes to finish
-for p in processes:
-    p.join()
+with multiprocessing.Pool(5) as p:
+    p.map(capture_frame,['828612060381','839112060979','839112061696','839212060064'])
