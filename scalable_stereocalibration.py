@@ -13,7 +13,7 @@ from itertools import combinations
 import cv2.aruco as aruco
 from scipy.spatial.transform import Rotation
 from scipy.optimize import least_squares
-from utils.trajectory_io import *
+#from utils.trajectory_io import *
 import traceback
 import argparse
 import matplotlib.pyplot as plt
