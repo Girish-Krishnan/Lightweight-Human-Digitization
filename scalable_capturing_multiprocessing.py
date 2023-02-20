@@ -73,6 +73,11 @@ def record_frames(device_num):
             depth_sensor.set_option(rs.option.laser_power, 360)  # max laser power
             print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
+            # Wait for a specific amount of time to allow the camera to adjust
+            timer = time.time_ns()
+            while (time.time_ns() - timer) < 3e9:
+                pass
+
             # Wait for a coherent pair of frames: depth and color
 
             frames = pipeline.wait_for_frames()
