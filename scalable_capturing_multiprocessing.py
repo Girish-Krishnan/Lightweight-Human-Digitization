@@ -85,9 +85,6 @@ def record_frames(device_num):
             color_frame = aligned_frames.get_color_frame()
             raw_color_frame = frames.get_color_frame()
 
-            # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
-            depth_colormap = cv.applyColorMap(cv.convertScaleAbs(aligned_depth_frame.get_data(), alpha=0.03), cv.COLORMAP_JET)
-
             # Validate that both frames are valid
             if not aligned_depth_frame or not color_frame:
                 return
@@ -95,6 +92,8 @@ def record_frames(device_num):
             # Convert images to numpy arrays
             depth_image = np.asanyarray(aligned_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
+            # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
+            depth_colormap = cv.applyColorMap(cv.convertScaleAbs(depth_image, alpha=0.03), cv.COLORMAP_JET)
 
             if args.data_reset:
                 print("Deleting all capturing data")
