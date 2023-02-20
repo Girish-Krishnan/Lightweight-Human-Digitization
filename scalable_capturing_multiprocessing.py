@@ -82,6 +82,12 @@ def record_frames(device_num):
 
             # Get aligned frames
             aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
+            aligned_depth_frame = rs.decimation_filter(1).process(aligned_depth_frame)
+            aligned_depth_frame = rs.disparity_transform(True).process(aligned_depth_frame)
+            aligned_depth_frame = rs.spatial_filter().process(aligned_depth_frame)
+            aligned_depth_frame = rs.temporal_filter().process(aligned_depth_frame)
+            aligned_depth_frame = rs.disparity_transform(False).process(aligned_depth_frame)
+
             color_frame = aligned_frames.get_color_frame()
             raw_color_frame = frames.get_color_frame()
 
