@@ -12,6 +12,11 @@ import shutil
 import argparse
 import multiprocessing
 
+parser = argparse.ArgumentParser(description='Capture images for calibration')
+parser.add_argument('--hardware_reset',help='reset all camera hardware')
+parser.add_argument('--data_reset',help='delete all capturing data')
+args = parser.parse_args()
+
 def record_frames(device_num):
         
             serial_numbers = []
@@ -114,15 +119,10 @@ def record_frames(device_num):
             np.save(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/depth_map.npy", depth_image)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Capture images for calibration')
-    parser.add_argument('--hardware_reset',help='reset all camera hardware')
-    parser.add_argument('--data_reset',help='delete all capturing data')
-    args = parser.parse_args()
-
-    
+    ctx = rs.context()
     if args.hardware_reset:
         print("Resetting all camera hardware")
-        ctx = rs.context()
+        
         devices = ctx.query_devices()
         for dev in devices:
             dev.hardware_reset()
