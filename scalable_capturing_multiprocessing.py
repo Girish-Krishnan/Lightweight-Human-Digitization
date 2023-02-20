@@ -73,11 +73,6 @@ def record_frames(device_num):
             depth_sensor.set_option(rs.option.laser_power, 360)  # max laser power
             print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
-            # Wait for a specific amount of time to allow the camera to adjust
-            timer = time.time_ns()
-            while (time.time_ns() - timer) < 3e9:
-                pass
-
             # Wait for a coherent pair of frames: depth and color
 
             frames = pipeline.wait_for_frames()
@@ -159,15 +154,18 @@ if __name__ == '__main__':
     # We will also create an align object to align the depth frames to color frames
     # Use multiprocessing
 
-    # Create a pool of processes. By default, one is created for each CPU in your machine.
-    pool = multiprocessing.Pool(processes=len(serial_numbers))
+    timer = time.time()    
+    
+    while (time.time() - timer) < 5:
+        # Create a pool of processes. By default, one is created for each CPU in your machine.
+        pool = multiprocessing.Pool(processes=len(serial_numbers))
 
-    # Start the processes and store them in a list
-    processes = [pool.apply_async(record_frames, args=(i,)) for i in range(len(serial_numbers))]    
+        # Start the processes and store them in a list
+        processes = [pool.apply_async(record_frames, args=(i,)) for i in range(len(serial_numbers))]    
 
-    # Get the results from the processes. This will block until all results are in
-    results = [p.get() for p in processes]
+        # Get the results from the processes. This will block until all results are in
+        results = [p.get() for p in processes]
 
-    # Close the pool and wait for the work to finish
-    pool.close()
+        # Close the pool and wait for the work to finish
+        pool.close()
 
