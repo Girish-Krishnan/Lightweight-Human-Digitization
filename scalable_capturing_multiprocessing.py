@@ -92,6 +92,7 @@ def record_frames(device_num):
             # Convert images to numpy arrays
             depth_image = np.asanyarray(aligned_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
+            raw_color_image = np.asanyarray(raw_color_frame.get_data())
             # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
             depth_colormap = cv.applyColorMap(cv.convertScaleAbs(depth_image, alpha=0.03), cv.COLORMAP_JET)
 
@@ -110,7 +111,7 @@ def record_frames(device_num):
 
             # Save color as .jpg and depth as .npy
             cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/image.jpg", color_image)
-            cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/raw_image.jpg", raw_color_frame)
+            cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/raw_image.jpg", raw_color_image)
             np.save(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/depth_map.npy", depth_image)
             cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/depth.png", depth_colormap)
 
