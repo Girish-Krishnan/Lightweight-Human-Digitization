@@ -12,6 +12,27 @@ import shutil
 import argparse
 import multiprocessing
 
+def record_frames(device_num, pipelines, align, ctx):
+    # Wait for a coherent pair of frames: depth and color
+        frames = pipelines[device_num].wait_for_frames()
+        aligned_frames = align[device_num].process(frames)
+
+        # Get aligned frames
+        aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
+        color_frame = aligned_frames.get_color_frame()
+
+        # Validate that both frames are valid
+        if not aligned_depth_frame or not color_frame:
+            return
+        
+        # Convert images to numpy arrays
+        depth_image = np.asanyarray(aligned_depth_frame.get_data())
+        color_image = np.asanyarray(color_frame.get_data())
+
+        # Save color as .jpg and depth as .npy
+        cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/image.jpg", color_image)
+        np.save(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/depth_map.npy", depth_image)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Capture images for calibration')
     parser.add_argument('--hardware_reset',help='reset all camera hardware')
@@ -123,52 +144,27 @@ if __name__ == '__main__':
     else:
 
         print("No Intel Device connected")
-        exit(-1)
-
-    def record_frames(device_num):
-    # Wait for a coherent pair of frames: depth and color
-        frames = pipelines[device_num].wait_for_frames()
-        aligned_frames = align[device_num].process(frames)
-
-        # Get aligned frames
-        aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
-        color_frame = aligned_frames.get_color_frame()
-
-        # Validate that both frames are valid
-        if not aligned_depth_frame or not color_frame:
-            return
-        
-        # Convert images to numpy arrays
-        depth_image = np.asanyarray(aligned_depth_frame.get_data())
-        color_image = np.asanyarray(color_frame.get_data())
-
-        # Save color as .jpg and depth as .npy
-        cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/image.jpg", color_image)
-        np.save(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/depth_map.npy", depth_image)
-
-    
+        exit(-1)    
         
     """
     START RECORDING SOME FRAMES
 
     """
 
-    if __name__ == "__main__":
+    # Now we will start streaming with the default streams of color and depth in parallel for all cameras
+    # We will also create an align object to align the depth frames to color frames
+    # Use multiprocessing
 
-        # Now we will start streaming with the default streams of color and depth in parallel for all cameras
-        # We will also create an align object to align the depth frames to color frames
-        # Use multiprocessing
-
-        # Create a pool of processes. By default, one is created for each CPU in your machine.
-        pool = multiprocessing.Pool(processes=len(serial_numbers))
+    # Create a pool of processes. By default, one is created for each CPU in your machine.
+    pool = multiprocessing.Pool(processes=len(serial_numbers))
 
 
-        # Start the processes and store them in a list
-        processes = [pool.apply_async(record_frames, args=(i,)) for i in range(len(serial_numbers))]    
+    # Start the processes and store them in a list
+    processes = [pool.apply_async(record_frames, args=(i,pipelines,align,ctx)) for i in range(len(serial_numbers))]    
 
-        # Get the results from the processes. This will block until all results are in
-        results = [p.get() for p in processes]
+    # Get the results from the processes. This will block until all results are in
+    results = [p.get() for p in processes]
 
-        # Close the pool and wait for the work to finish
-        pool.close()
+    # Close the pool and wait for the work to finish
+    pool.close()
 
