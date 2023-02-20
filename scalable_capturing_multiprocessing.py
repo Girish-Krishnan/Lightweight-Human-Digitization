@@ -12,22 +12,43 @@ import shutil
 import argparse
 import multiprocessing
 
-parser = argparse.ArgumentParser(description='Capture images for calibration')
-parser.add_argument('--hardware_reset',help='reset all camera hardware')
-parser.add_argument('--data_reset',help='delete all capturing data')
-args = parser.parse_args()
+def record_frames(device_num):
+   # Wait for a coherent pair of frames: depth and color
+    frames = pipelines[device_num].wait_for_frames()
+    aligned_frames = align[device_num].process(frames)
 
-serial_numbers = []
-pipelines = []
-configs = []
-align = []
-profiles = []
-ctx = rs.context()
+    # Get aligned frames
+    aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
+    color_frame = aligned_frames.get_color_frame()
 
-IMG_SIZE = [640, 480]
+    # Validate that both frames are valid
+    if not aligned_depth_frame or not color_frame:
+        return
+    
+    # Convert images to numpy arrays
+    depth_image = np.asanyarray(aligned_depth_frame.get_data())
+    color_image = np.asanyarray(color_frame.get_data())
+
+    # Save color as .jpg and depth as .npy
+    cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/image.jpg", color_image)
+    np.save(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/depth_map.npy", depth_image)
+
+
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Capture images for calibration')
+    parser.add_argument('--hardware_reset',help='reset all camera hardware')
+    parser.add_argument('--data_reset',help='delete all capturing data')
+    args = parser.parse_args()
 
+    serial_numbers = []
+    pipelines = []
+    configs = []
+    align = []
+    profiles = []
+    ctx = rs.context()
+
+    IMG_SIZE = [640, 480]
     if args.hardware_reset:
         print("Resetting all camera hardware")
         devices = ctx.query_devices()
@@ -143,7 +164,7 @@ if __name__ == '__main__':
 
 
     # Start the processes and store them in a list
-    processes = [pool.apply_async(record_frames, args=(serial_numbers[i],)) for i in range(len(serial_numbers))]    
+    processes = [pool.apply_async(record_frames, args=(i,)) for i in range(len(serial_numbers))]    
 
     # Get the results from the processes. This will block until all results are in
     results = [p.get() for p in processes]
@@ -151,28 +172,4 @@ if __name__ == '__main__':
     # Close the pool and wait for the work to finish
     pool.close()
 
-
-def record_frames(serial_number):
-    # Get the index of the serial number
-    device_num = serial_numbers.index(serial_number)
-
-    # Wait for a coherent pair of frames: depth and color
-    frames = pipelines[device_num].wait_for_frames()
-    aligned_frames = align[device_num].process(frames)
-
-    # Get aligned frames
-    aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
-    color_frame = aligned_frames.get_color_frame()
-
-    # Validate that both frames are valid
-    if not aligned_depth_frame or not color_frame:
-        return
-    
-    # Convert images to numpy arrays
-    depth_image = np.asanyarray(aligned_depth_frame.get_data())
-    color_image = np.asanyarray(color_frame.get_data())
-
-    # Save color as .jpg and depth as .npy
-    cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/color" + str(device_num) + ".jpg", color_image)
-    np.save(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/depth" + str(device_num) + ".npy", depth_image)
 
