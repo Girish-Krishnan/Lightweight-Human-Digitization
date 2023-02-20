@@ -11,6 +11,7 @@ import json
 import shutil
 import argparse
 import multiprocessing
+import time
 
 parser = argparse.ArgumentParser(description='Capture images for calibration')
 parser.add_argument('--hardware_reset',help='reset all camera hardware')
@@ -22,29 +23,13 @@ def record_frames(device_num):
             pipeline = rs.pipeline()
             ctx = rs.context()
             config = rs.config()
-            IMG_SIZE = [640, 480]
 
             print ('Found device: ', ctx.devices[device_num].get_info(rs.camera_info.name), ' ', ctx.devices[device_num].get_info(rs.camera_info.serial_number))
             config.enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
             config.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 60)
             config.enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 60)
             config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
-            #os.chmod(ctx.devices[device_num].get_info(rs.camera_info.serial_number), 0o777)
-            
-            if args.data_reset:
-                print("Deleting all capturing data")
-                if os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
-                    shutil.rmtree(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-
-            if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
-                os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-            
-            if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images"):
-                os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images")
-            if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images"):
-                os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images")
-
-            config.enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
+            # config.enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
 
             # Align objects
             align_to = rs.stream.depth  # align to depth frame
@@ -89,12 +74,19 @@ def record_frames(device_num):
             print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
             # Wait for a coherent pair of frames: depth and color
+
             frames = pipeline.wait_for_frames()
+            # Print the current timestamp in nanoseconds
+            print("Capturing timestamp for camera " + device_num + ": ", frames.get_timestamp())
             aligned_frames = align.process(frames)
 
             # Get aligned frames
             aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
             color_frame = aligned_frames.get_color_frame()
+            raw_color_frame = frames.get_color_frame()
+
+            # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
+            depth_colormap = cv.applyColorMap(cv.convertScaleAbs(aligned_depth_frame.get_data(), alpha=0.03), cv.COLORMAP_JET)
 
             # Validate that both frames are valid
             if not aligned_depth_frame or not color_frame:
@@ -104,9 +96,24 @@ def record_frames(device_num):
             depth_image = np.asanyarray(aligned_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
 
+            if args.data_reset:
+                print("Deleting all capturing data")
+                if os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
+                    shutil.rmtree(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
+
+            if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
+                os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
+            
+            if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images"):
+                os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images")
+            if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images"):
+                os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images")
+
             # Save color as .jpg and depth as .npy
             cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/image.jpg", color_image)
+            cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/raw_image.jpg", raw_color_frame)
             np.save(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/depth_map.npy", depth_image)
+            cv.imwrite(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images/depth.png", depth_colormap)
 
 if __name__ == '__main__':
     ctx = rs.context()
@@ -143,7 +150,6 @@ if __name__ == '__main__':
 
     # Create a pool of processes. By default, one is created for each CPU in your machine.
     pool = multiprocessing.Pool(processes=len(serial_numbers))
-
 
     # Start the processes and store them in a list
     processes = [pool.apply_async(record_frames, args=(i,)) for i in range(len(serial_numbers))]    
