@@ -1,6 +1,5 @@
 # Implement scalable_capturing.py using multiprocessing for parallelism
 # and threading for concurrency.
-# This is a solution to the problem described in the README.md file.
 #
 
 import pyrealsense2 as rs
