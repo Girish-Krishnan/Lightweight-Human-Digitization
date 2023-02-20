@@ -120,13 +120,3 @@ if __name__ == '__main__':
 
         print("No Intel Device connected")
         exit(-1)
-    
-    with open("./multiprocessing.json","w") as f:
-        json.dump({
-            "serial_numbers": serial_numbers,
-            "pipelines": pipelines,
-            "configs": configs,
-            "align": align,
-            "profiles": profiles
-        },f)
-        f.close()

@@ -12,6 +12,17 @@ import shutil
 import argparse
 import multiprocessing
 
+with open("./configuration_parameters.json") as f:
+    ctx = rs.context()
+    parameters = json.load(f)
+    serial_numbers = parameters["cams"].keys()
+    pipelines = rs.pipeline() * len(serial_numbers)
+    configs = [rs.config().enable_device(serial_num).enable_stream(rs.stream.depth, 640,480, rs.format.z16, 60).enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 60).enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60).enable_record_to_file('./' + serial_num + '/video.bag') for serial_num in serial_numbers]
+    [pipelines[i].start(configs[i]) for i in range(len(serial_numbers))]
+    align = [rs.align(rs.stream.depth) for i in range(len(serial_numbers))]
+    profiles = [pipelines[i].get_active_profile() for i in range(len(serial_numbers))]
+    f.close()
+
 def record_frames(device_num):
    # Wait for a coherent pair of frames: depth and color
     frames = pipelines[device_num].wait_for_frames()
@@ -40,13 +51,6 @@ if __name__ == '__main__':
     parser.add_argument('--hardware_reset',help='reset all camera hardware')
     parser.add_argument('--data_reset',help='delete all capturing data')
     args = parser.parse_args()
-
-    serial_numbers = []
-    pipelines = []
-    configs = []
-    align = []
-    profiles = []
-    ctx = rs.context()
 
     IMG_SIZE = [640, 480]
     if args.hardware_reset:
