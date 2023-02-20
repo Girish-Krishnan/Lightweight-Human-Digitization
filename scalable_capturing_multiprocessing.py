@@ -18,24 +18,17 @@ parser.add_argument('--data_reset',help='delete all capturing data')
 args = parser.parse_args()
 
 def record_frames(device_num):
-        
-            serial_numbers = []
-            pipelines = []
-            configs = []
-            align = []
-            profiles = []
+    # Configure depth and color streams
+            pipeline = rs.pipeline()
             ctx = rs.context()
-
+            config = rs.config()
             IMG_SIZE = [640, 480]
 
             print ('Found device: ', ctx.devices[device_num].get_info(rs.camera_info.name), ' ', ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-            serial_numbers.append(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-            pipelines.append(rs.pipeline())
-            configs.append(rs.config())
-            configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-            configs[device_num].enable_stream(rs.stream.depth, 640,480, rs.format.z16, 60)
-            configs[device_num].enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 60)
-            configs[device_num].enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
+            config.enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
+            config.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 60)
+            config.enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 60)
+            config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
             #os.chmod(ctx.devices[device_num].get_info(rs.camera_info.serial_number), 0o777)
             
             if args.data_reset:
@@ -51,25 +44,22 @@ def record_frames(device_num):
             if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images"):
                 os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images")
 
-            configs[device_num].enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
+            config.enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
 
             # Align objects
             align_to = rs.stream.depth  # align to depth frame
-            align.append(rs.align(align_to))
-            pipelines[device_num].start(configs[device_num])
+            align = rs.align(align_to)
+            pipeline.start(config)
 
             # enable IR emitter and auto exposure
-            profile = pipelines[device_num].get_active_profile()
+            profile = pipeline.get_active_profile()
 
-            profiles.append(profile)
             color_profile = rs.video_stream_profile(profile.get_stream(rs.stream.color))
             color_intrinsics = color_profile.get_intrinsics()
             # depth_profile = rs.video_stream_profile(profile.get_stream(rs.stream.depth))
             # depth_intrinsics = depth_profile.get_intrinsics()
             ir_profile = rs.video_stream_profile(profile.get_stream(rs.stream.infrared))
             ir_intrinsics = ir_profile.get_intrinsics()
-
-            s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
             # configuration_parameters["cams"][s_num] = {}
             # configuration_parameters["cams"][s_num]["intrinsics"] = {}
             # configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = IMG_SIZE
@@ -99,8 +89,8 @@ def record_frames(device_num):
             print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
             # Wait for a coherent pair of frames: depth and color
-            frames = pipelines[device_num].wait_for_frames()
-            aligned_frames = align[device_num].process(frames)
+            frames = pipeline.wait_for_frames()
+            aligned_frames = align.process(frames)
 
             # Get aligned frames
             aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
