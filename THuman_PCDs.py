@@ -37,7 +37,7 @@ for img_num in range(NUM_IMAGES):
     for i in range(NUM_CAMS):
         cam[i].add_image(IMAGES[img_index+i],DEPTH_MAPS[img_index+i])
         cam[i].point_cloud()
-
+        cam[i].visualize()
 
     print("started timing") # to measure runtime for combiner
     start_time = time.time()
