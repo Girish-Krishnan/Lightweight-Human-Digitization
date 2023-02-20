@@ -208,6 +208,8 @@ try:
         for i in range(len(serial_numbers)):
 
             frames = pipelines[i].wait_for_frames()
+            # Print the current timestamp
+            print("Capturing timestamp for camera " + str(i) + ": ", str(frames.get_timestamp()))
             raw_color_frames[i] = frames.get_color_frame()
             aligned_frames = align[i].process(frames)
             color_frames[i] = aligned_frames.get_color_frame()

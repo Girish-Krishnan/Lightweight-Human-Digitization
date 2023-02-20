@@ -76,7 +76,7 @@ def record_frames(device_num):
             # Wait for a coherent pair of frames: depth and color
 
             frames = pipeline.wait_for_frames()
-            # Print the current timestamp in nanoseconds
+            # Print the current timestamp
             print("Capturing timestamp for camera " + str(device_num) + ": ", str(frames.get_timestamp()))
             aligned_frames = align.process(frames)
 
