@@ -1,6 +1,5 @@
 # Implement scalable_capturing.py using multiprocessing for parallelism
 # and threading for concurrency.
-#
 
 import pyrealsense2 as rs
 import os
@@ -10,7 +9,6 @@ import json
 import shutil
 import argparse
 import multiprocessing
-import time
 from functools import partial
 
 parser = argparse.ArgumentParser(description='Capture images for calibration')
@@ -19,13 +17,13 @@ parser.add_argument('--data_reset',help='delete all capturing data')
 args = parser.parse_args()
  
 
-def record_frames(device_num, serial_number, pipeline, align, fixed_arg):
+def record_frames(pipelines, align, device_num, serial_number):
             # Wait for a coherent pair of frames: depth and color
 
-            frames = pipeline.wait_for_frames()
+            frames = pipelines[device_num].wait_for_frames()
             # Print the current timestamp
             print("Capturing timestamp for camera " + str(device_num) + ": ", str(frames.get_timestamp()))
-            aligned_frames = align.process(frames)
+            aligned_frames = align[device_num].process(frames)
 
             # Get aligned frames
             aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
@@ -169,12 +167,16 @@ if __name__ == '__main__':
         print("No Intel Device connected")
         exit(-1)
 
-    processing_array = [(device_num, serial_numbers[device_num], pipelines[device_num], align[device_num]) for device_num in range(len(serial_numbers))]
+    # Create a manager to share the pipeline object between processes
+    manager = multiprocessing.Manager()
+    pipeline_shared = manager.Namespace()
+    pipeline_shared.pipelines = pipelines
+    pipeline_shared.align = align
 
-    # Make a partial function to pass to the pool
-    partial_record_frames = partial(record_frames, fixed_arg = 10)
+    processing_array = [(device_num, serial_numbers[device_num]) for device_num in range(len(serial_numbers))]
 
     with multiprocessing.Pool(processes=len(serial_numbers)) as p:
+        partial_record_frames = partial(record_frames, pipeline_shared)
         p.starmap(partial_record_frames, processing_array)
         p.close()
         p.join()
