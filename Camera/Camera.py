@@ -12,6 +12,7 @@ import copy
 import pyrealsense2 as rs
 import concurrent.futures
 import time
+import multiprocessing
 
 """
 Classes for 3D reconstruction
@@ -242,16 +243,30 @@ class SynchronousCapture:
         # Wait for some time to allow camera to stabilize and adjust
         time.sleep(5)
 
+    def get_frames(self, cam_num):
+        # Get frames from camera
+        return self.cameras[cam_num].get_frames()
+
     def capture(self):
-        # Use multi-threading to capture frames from all cameras simultaneously
+        # Use multiprocessing to capture frames from all cameras simultaneously
+        
         with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
             start = time.time()
-            futures = [executor.submit(camera.get_frames) for camera in self.cameras]
+            futures = executor.map(self.get_frames, range(len(self.cameras)))
+            results = [future.result() for future in futures]
             end = time.time()
             print("Time taken to capture frames from all cameras: ", end - start)
-            results = [future.result() for future in futures]
             if not all(results):
                 raise Exception("Failed to capture frames from all cameras")
+
+        # with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+        #     start = time.time()
+        #     futures = [executor.submit(camera.get_frames) for camera in self.cameras]
+        #     end = time.time()
+        #     print("Time taken to capture frames from all cameras: ", end - start)
+        #     results = [future.result() for future in futures]
+        #     if not all(results):
+        #         raise Exception("Failed to capture frames from all cameras")
 
     def save(self):
         # Save frames from all cameras
