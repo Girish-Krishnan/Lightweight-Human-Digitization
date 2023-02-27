@@ -201,9 +201,9 @@ class RealSenseCamera:
 
     def get_frames(self):
         # Get frameset of color and depth
-        frames = self.pipeline.wait_for_frames()
-        # Print time stamp of frames
-        print("Frame timestamp for camera " + self.serial_number + " " , frames.get_timestamp())
+        return self.pipeline.poll_for_frames()
+        
+    def process_frames(self, frames):    
         aligned_frames = rs.align(rs.stream.depth).process(frames)
 
         # Get aligned frames
@@ -241,32 +241,46 @@ class SynchronousCapture:
         self.serial_numbers = serial_numbers
         self.cameras = [RealSenseCamera(serial_number) for serial_number in serial_numbers]
         # Wait for some time to allow camera to stabilize and adjust
-        time.sleep(5)
-
-    def get_frames(self, cam_num):
-        # Get frames from camera
-        return self.cameras[cam_num].get_frames()
+        print("Waiting for cameras to stabilize...")
+        time.sleep(3)
 
     def capture(self):
-        # Use multiprocessing to capture frames from all cameras simultaneously
-        
-        with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
-            start = time.time()
-            futures = executor.map(self.get_frames, range(len(self.cameras)))
-            results = [future.result() for future in futures]
-            end = time.time()
-            print("Time taken to capture frames from all cameras: ", end - start)
-            if not all(results):
-                raise Exception("Failed to capture frames from all cameras")
+        # capture frames from all cameras simultaneously
+        while True:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                start = time.time()
+                futures = [executor.submit(camera.get_frames) for camera in self.cameras]
+                results = [future.result() for future in futures]
+                end = time.time()
+                if all(results):
+                    print("Time taken to capture frames from all cameras: ", end - start)
 
-        # with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
-        #     start = time.time()
-        #     futures = [executor.submit(camera.get_frames) for camera in self.cameras]
-        #     end = time.time()
-        #     print("Time taken to capture frames from all cameras: ", end - start)
-        #     results = [future.result() for future in futures]
-        #     if not all(results):
-        #         raise Exception("Failed to capture frames from all cameras")
+                    # Process frames
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        start = time.time()
+                        futures = [executor.submit(camera.process_frames, results[i]) for i, camera in enumerate(self.cameras)]
+                        results = [future.result() for future in futures]
+                        end = time.time()
+                        if all(results):
+                            print("Time taken to process frames from all cameras: ", end - start)
+
+                            # Save frames
+                            with concurrent.futures.ThreadPoolExecutor() as executor:
+                                start = time.time()
+                                futures = [executor.submit(camera.save_frames) for camera in self.cameras]
+                                results = [future.result() for future in futures]
+                                end = time.time()
+                                if all(results):
+                                    print("Time taken to save frames from all cameras: ", end - start)
+                                    return
+                                else:
+                                    print("Failed to save frames from all cameras")
+                                    continue
+                        else:
+                            print("Failed to process frames from all cameras")
+                            continue
+
+                    break
 
     def save(self):
         # Save frames from all cameras
