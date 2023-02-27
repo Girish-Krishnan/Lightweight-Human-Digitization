@@ -8,7 +8,7 @@ import numpy as np
 import json
 import shutil
 import argparse
-import multiprocessing
+import pathos.multiprocessing
 from functools import partial
 
 parser = argparse.ArgumentParser(description='Capture images for calibration')
