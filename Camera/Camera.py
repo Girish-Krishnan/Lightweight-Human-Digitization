@@ -237,11 +237,10 @@ class SynchronousCapture:
     def __init__(self, serial_numbers) -> None:
         self.serial_numbers = serial_numbers
         self.cameras = [RealSenseCamera(serial_number) for serial_number in serial_numbers]
-
-    def capture(self):
         # Wait for some time to allow camera to stabilize and adjust
         time.sleep(5)
 
+    def capture(self):
         # Use multi-threading to capture frames from all cameras simultaneously
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [executor.submit(camera.get_frames) for camera in self.cameras]
