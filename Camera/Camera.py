@@ -259,6 +259,11 @@ class SynchronousCapture:
                     # Print out timestamp of each result frame
                     for i, result in enumerate(results):
                         print("Camera ", self.serial_numbers[i], " timestamp: ", result.get_timestamp())
+                        # Find standard deviation of timestamps
+                        timestamps = [result.get_timestamp() for result in results]
+                        print("Standard deviation of timestamps: ", np.std(timestamps))
+                        # Find range of timestamps
+                        print("Range of timestamps: ", max(timestamps) - min(timestamps))
 
                     print("Time taken to capture frames from all cameras: ", end - start)
 

@@ -270,6 +270,10 @@ try:
 
             for i in range(len(serial_numbers)):
                 print("Camera " + str(i) + ": " + str(timestamps[i]))
+                # Print standard deviation of timestamps
+                print("Standard deviation: " + str(np.std(timestamps)))
+                # Print range of timestamps
+                print("Range: " + str(np.max(timestamps) - np.min(timestamps)))
 
             # Print time taken for capturing
             print("Time taken: " + str(end - start))
