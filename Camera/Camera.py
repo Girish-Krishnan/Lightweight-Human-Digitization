@@ -234,6 +234,8 @@ class RealSenseCamera:
         np.save(self.serial_number + "/sample_images/depth_map.npy", depth_image)
         cv.imwrite(self.serial_number + "/sample_images/depth.png", depth_colormap)
 
+        return True
+
 
 class SynchronousCapture:
 
