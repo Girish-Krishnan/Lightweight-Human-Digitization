@@ -69,7 +69,7 @@ class Camera:
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
 
-        self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.07)
+        self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.05)
 
         self.pcd = np.asarray(self.pcd_o3d.points)
         self.colors = np.asarray(self.pcd_o3d.colors)
