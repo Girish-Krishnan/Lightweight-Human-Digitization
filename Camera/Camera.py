@@ -252,9 +252,14 @@ class SynchronousCapture:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 start = time.time()
                 futures = [executor.submit(camera.get_frames) for camera in self.cameras]
-                results = [future.result() for future in futures]
+                concurrent.futures.wait(futures)
                 end = time.time()
+                results = [future.result() for future in futures]
                 if all(results):
+                    # Print out timestamp of each result frame
+                    for i, result in enumerate(results):
+                        print("Camera ", self.serial_numbers[i], " timestamp: ", result.get_timestamp())
+
                     print("Time taken to capture frames from all cameras: ", end - start)
 
                     # Process frames
