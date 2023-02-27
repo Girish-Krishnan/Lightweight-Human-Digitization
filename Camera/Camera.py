@@ -3,10 +3,15 @@ IMPORTS
 """
 import cv2 as cv
 import numpy as np
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import open3d as o3d
 import copy
+import pyrealsense2 as rs
+import concurrent.futures
 
+"""
+Classes for 3D reconstruction
+"""
 
 class Camera:
 
@@ -161,3 +166,82 @@ class Combiner:
             self.cam_array[i].rotation = np.matmul(self.cam_array[i].rotation,np.array(reg_p2p.transformation[:3,:3]))
             self.cam_array[i].translation += np.array(reg_p2p.transformation[:3,3])
 
+"""
+Classes for scalable capturing
+"""
+
+class RealSenseCamera:
+
+    def __init__(self, serial_number) -> None:
+        # Create RealSense D415 camera object and pipeline
+
+        self.serial_number = serial_number
+        self.pipeline = rs.pipeline()
+        self.config = rs.config()
+        self.config.enable_device(serial_number)
+        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 60)
+        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 60)
+        self.config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
+
+        # Start streaming
+        self.pipeline.start(self.config)
+
+        # Enable IR emitter and set max laser power
+
+        self.profile = self.pipeline.get_active_profile()
+        self.depth_sensor = self.profile.get_device().first_depth_sensor()
+        self.depth_sensor.set_option(rs.option.emitter_enabled, 1)
+        self.depth_sensor.set_option(rs.option.enable_auto_exposure, True)
+        self.depth_sensor.set_option(rs.option.laser_power, 360)
+
+    def get_frames(self):
+        # Get frameset of color and depth
+        frames = self.pipeline.wait_for_frames()
+        aligned_frames = rs.align(rs.stream.depth).process(frames)
+
+        # Get aligned frames
+        self.aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
+        self.aligned_depth_frame = rs.decimation_filter(1).process(self.aligned_depth_frame)
+        self.aligned_depth_frame = rs.disparity_transform(True).process(self.aligned_depth_frame)
+        self.aligned_depth_frame = rs.spatial_filter().process(self.aligned_depth_frame)
+        self.aligned_depth_frame = rs.temporal_filter().process(self.aligned_depth_frame)
+        self.aligned_depth_frame = rs.disparity_transform(False).process(self.aligned_depth_frame)
+
+        self.color_frame = aligned_frames.get_color_frame()
+        self.raw_color_frame = frames.get_color_frame()
+
+        # Validate that both frames are valid
+        return (self.aligned_depth_frame and self.color_frame)
+
+    def save_frames(self):    
+        # Convert images to numpy arrays
+        depth_image = np.asanyarray(self.aligned_depth_frame.get_data())
+        color_image = np.asanyarray(self.color_frame.get_data())
+        raw_color_image = np.asanyarray(self.raw_color_frame.get_data())
+        # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
+        depth_colormap = cv.applyColorMap(cv.convertScaleAbs(depth_image, alpha=0.03), cv.COLORMAP_JET)
+
+        # Save color as .jpg and depth as .npy
+        cv.imwrite(self.serial_number + "/sample_images/image.jpg", color_image)
+        cv.imwrite(self.serial_number + "/sample_images/raw_image.jpg", raw_color_image)
+        np.save(self.serial_number + "/sample_images/depth_map.npy", depth_image)
+        cv.imwrite(self.serial_number + "/sample_images/depth.png", depth_colormap)
+
+
+class SynchronousCapture:
+
+    def __init__(self, serial_numbers) -> None:
+        self.serial_numbers = serial_numbers
+        self.cameras = [RealSenseCamera(serial_number) for serial_number in serial_numbers]
+
+    def capture(self):
+        # Use multi-threading to capture frames from all cameras simultaneously
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(camera.get_frames) for camera in self.cameras]
+            concurrent.futures.wait(futures)
+
+        # Save frames from all cameras
+        [camera.save_frames() for camera in self.cameras]
+
+    def stop(self):
+        [camera.pipeline.stop() for camera in self.cameras]
