@@ -3,11 +3,15 @@ IMPORTS
 """
 import cv2 as cv
 import numpy as np
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+except:
+    pass
 import open3d as o3d
 import copy
 import pyrealsense2 as rs
 import concurrent.futures
+import time
 
 """
 Classes for 3D reconstruction
@@ -235,10 +239,17 @@ class SynchronousCapture:
         self.cameras = [RealSenseCamera(serial_number) for serial_number in serial_numbers]
 
     def capture(self):
+        # Wait for some time to allow camera to stabilize and adjust
+        time.sleep(5)
+
         # Use multi-threading to capture frames from all cameras simultaneously
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [executor.submit(camera.get_frames) for camera in self.cameras]
             concurrent.futures.wait(futures)
+
+            results = [future.result() for future in futures]
+            if not all(results):
+                raise Exception("Failed to capture frames from all cameras")
 
         # Save frames from all cameras
         [camera.save_frames() for camera in self.cameras]
