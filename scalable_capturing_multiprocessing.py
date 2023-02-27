@@ -11,6 +11,7 @@ import shutil
 import argparse
 import multiprocessing
 import time
+from functools import partial
 
 parser = argparse.ArgumentParser(description='Capture images for calibration')
 parser.add_argument('--hardware_reset',help='reset all camera hardware')
@@ -18,7 +19,7 @@ parser.add_argument('--data_reset',help='delete all capturing data')
 args = parser.parse_args()
  
 
-def record_frames(device_num, serial_number, pipeline, align):
+def record_frames(device_num, serial_number, pipeline, align, fixed_arg):
             # Wait for a coherent pair of frames: depth and color
 
             frames = pipeline.wait_for_frames()
@@ -170,8 +171,11 @@ if __name__ == '__main__':
 
     processing_array = [(device_num, serial_numbers[device_num], pipelines[device_num], align[device_num]) for device_num in range(len(serial_numbers))]
 
+    # Make a partial function to pass to the pool
+    partial_record_frames = partial(record_frames, fixed_arg = 10)
+
     with multiprocessing.Pool(processes=len(serial_numbers)) as p:
-        p.starmap(record_frames, processing_array)
+        p.starmap(partial_record_frames, processing_array)
         p.close()
         p.join()
 
