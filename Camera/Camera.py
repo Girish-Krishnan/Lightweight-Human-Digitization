@@ -255,7 +255,11 @@ class SynchronousCapture:
                 concurrent.futures.wait(futures)
                 end = time.time()
                 results = [future.result() for future in futures]
-                if all(results):
+
+                if not all(results):
+                    continue
+
+                else:
                     # Print out timestamp of each result frame
                     for i, result in enumerate(results):
                         print("Camera ", self.serial_numbers[i], " timestamp: ", result.get_timestamp())
