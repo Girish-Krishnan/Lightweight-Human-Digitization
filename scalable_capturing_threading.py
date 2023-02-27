@@ -132,6 +132,8 @@ depth_colormaps = len(serial_numbers) * [0]
 def capture_frame(pipeline,i):
     while True:
         frames = pipeline.wait_for_frames()
+        # Print timestamp for frames
+        print("Frame timestamp for camera " + str(i) + " ", frames.get_timestamp())
         raw_color_frames[i] = frames.get_color_frame()
         aligned_frames = align[i].process(frames)
         color_frames[i] = aligned_frames.get_color_frame()

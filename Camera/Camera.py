@@ -201,6 +201,8 @@ class RealSenseCamera:
     def get_frames(self):
         # Get frameset of color and depth
         frames = self.pipeline.wait_for_frames()
+        # Print time stamp of frames
+        print("Frame timestamp for camera " + self.serial_number + " " , frames.get_timestamp())
         aligned_frames = rs.align(rs.stream.depth).process(frames)
 
         # Get aligned frames
