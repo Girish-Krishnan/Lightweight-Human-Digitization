@@ -8,22 +8,40 @@ import numpy as np
 import json
 import shutil
 import argparse
-import pathos.multiprocessing
-from functools import partial
+import multiprocessing
+import time
 
 parser = argparse.ArgumentParser(description='Capture images for calibration')
 parser.add_argument('--hardware_reset',help='reset all camera hardware')
 parser.add_argument('--data_reset',help='delete all capturing data')
 args = parser.parse_args()
- 
 
-def record_frames(pipelines, align, device_num, serial_number):
+def record_frames(device_num, serial_number):
             # Wait for a coherent pair of frames: depth and color
+            pipeline = rs.pipeline()
+            config = rs.config()
+            config.enable_device(serial_number)
+            config.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 60)
+            config.enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 60)
+            config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
+            pipeline.start(config)
+            profile = pipeline.get_active_profile()
+            device = profile.get_device()
+            depth_sensor = device.query_sensors()[0]
+            emitter = depth_sensor.get_option(rs.option.emitter_enabled)
+            print("old emitter = ", emitter)
+            depth_sensor.set_option(rs.option.emitter_enabled, 1)  # enable IR emitter
+            emitter1 = depth_sensor.get_option(rs.option.emitter_enabled)
+            print("new emitter = ", emitter1)
+            depth_sensor.set_option(rs.option.enable_auto_exposure, True)  # enable auto exposure
+            depth_sensor.set_option(rs.option.laser_power, 360)  # max laser power
+            print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
-            frames = pipelines[device_num].wait_for_frames()
+            frames = pipeline.wait_for_frames()
             # Print the current timestamp
             print("Capturing timestamp for camera " + str(device_num) + ": ", str(frames.get_timestamp()))
-            aligned_frames = align[device_num].process(frames)
+            align = rs.align(rs.stream.depth)
+            aligned_frames = align.process(frames)
 
             # Get aligned frames
             aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
@@ -113,52 +131,52 @@ if __name__ == '__main__':
             if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images"):
                 os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images")
 
-            configs[device_num].enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
+            # configs[device_num].enable_record_to_file('./' + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + '/video.bag')
 
             # Align objects
-            align_to = rs.stream.depth  # align to depth frame
-            align.append(rs.align(align_to))
-            pipelines[device_num].start(configs[device_num])
+            # align_to = rs.stream.depth  # align to depth frame
+            # align.append(rs.align(align_to))
+            # pipelines[device_num].start(configs[device_num])
 
             # enable IR emitter and auto exposure
-            profile = pipelines[device_num].get_active_profile()
+            # profile = pipelines[device_num].get_active_profile()
 
-            profiles.append(profile)
-            color_profile = rs.video_stream_profile(profile.get_stream(rs.stream.color))
-            color_intrinsics = color_profile.get_intrinsics()
-            # depth_profile = rs.video_stream_profile(profile.get_stream(rs.stream.depth))
-            # depth_intrinsics = depth_profile.get_intrinsics()
-            ir_profile = rs.video_stream_profile(profile.get_stream(rs.stream.infrared))
-            ir_intrinsics = ir_profile.get_intrinsics()
+            # profiles.append(profile)
+            # color_profile = rs.video_stream_profile(profile.get_stream(rs.stream.color))
+            # color_intrinsics = color_profile.get_intrinsics()
+            # # depth_profile = rs.video_stream_profile(profile.get_stream(rs.stream.depth))
+            # # depth_intrinsics = depth_profile.get_intrinsics()
+            # ir_profile = rs.video_stream_profile(profile.get_stream(rs.stream.infrared))
+            # ir_intrinsics = ir_profile.get_intrinsics()
 
-            s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
-            # configuration_parameters["cams"][s_num] = {}
-            # configuration_parameters["cams"][s_num]["intrinsics"] = {}
-            # configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = IMG_SIZE
-            # configuration_parameters["cams"][s_num]["intrinsics"]["focal_length"] = [color_intrinsics.fx,
-            #                                                                                color_intrinsics.fy]
-            # configuration_parameters["cams"][s_num]["intrinsics"]["img_center"] = [color_intrinsics.ppx,
-            #                                                                              color_intrinsics.ppy]
-            # # configuration_parameters["cams"][s_num]["intrinsics"]["depth_focal_length"] = [depth_intrinsics.fx,
-            # #                                                                                depth_intrinsics.fy]
-            # # configuration_parameters["cams"][s_num]["intrinsics"]["depth_img_center"] = [depth_intrinsics.ppx,
-            # #                                                                              depth_intrinsics.ppy]
-            # configuration_parameters["cams"][s_num]["intrinsics"]["ir_focal_length"] = [ir_intrinsics.fx,
-            #                                                                                ir_intrinsics.fy]
-            # configuration_parameters["cams"][s_num]["intrinsics"]["ir_img_center"] = [ir_intrinsics.ppx,
-            #                                                                              ir_intrinsics.ppy]
+            # s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
+            # # configuration_parameters["cams"][s_num] = {}
+            # # configuration_parameters["cams"][s_num]["intrinsics"] = {}
+            # # configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = IMG_SIZE
+            # # configuration_parameters["cams"][s_num]["intrinsics"]["focal_length"] = [color_intrinsics.fx,
+            # #                                                                                color_intrinsics.fy]
+            # # configuration_parameters["cams"][s_num]["intrinsics"]["img_center"] = [color_intrinsics.ppx,
+            # #                                                                              color_intrinsics.ppy]
+            # # # configuration_parameters["cams"][s_num]["intrinsics"]["depth_focal_length"] = [depth_intrinsics.fx,
+            # # #                                                                                depth_intrinsics.fy]
+            # # # configuration_parameters["cams"][s_num]["intrinsics"]["depth_img_center"] = [depth_intrinsics.ppx,
+            # # #                                                                              depth_intrinsics.ppy]
+            # # configuration_parameters["cams"][s_num]["intrinsics"]["ir_focal_length"] = [ir_intrinsics.fx,
+            # #                                                                                ir_intrinsics.fy]
+            # # configuration_parameters["cams"][s_num]["intrinsics"]["ir_img_center"] = [ir_intrinsics.ppx,
+            # #                                                                              ir_intrinsics.ppy]
 
-            device = profile.get_device()
-            depth_sensor = device.query_sensors()[0]
-            emitter = depth_sensor.get_option(rs.option.emitter_enabled)
-            print("old emitter = ", emitter)
-            depth_sensor.set_option(rs.option.emitter_enabled, 1)  # enable IR emitter
-            emitter1 = depth_sensor.get_option(rs.option.emitter_enabled)
-            print("new emitter = ", emitter1)
-            depth_sensor.set_option(rs.option.enable_auto_exposure, True)  # enable auto exposure
+            # device = profile.get_device()
+            # depth_sensor = device.query_sensors()[0]
+            # emitter = depth_sensor.get_option(rs.option.emitter_enabled)
+            # print("old emitter = ", emitter)
+            # depth_sensor.set_option(rs.option.emitter_enabled, 1)  # enable IR emitter
+            # emitter1 = depth_sensor.get_option(rs.option.emitter_enabled)
+            # print("new emitter = ", emitter1)
+            # depth_sensor.set_option(rs.option.enable_auto_exposure, True)  # enable auto exposure
 
-            depth_sensor.set_option(rs.option.laser_power, 360)  # max laser power
-            print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
+            # depth_sensor.set_option(rs.option.laser_power, 360)  # max laser power
+            # print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
         json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)    
 
@@ -168,16 +186,17 @@ if __name__ == '__main__':
         exit(-1)
 
     # Create a manager to share the pipeline object between processes
-    manager = multiprocessing.Manager()
-    pipeline_shared = manager.Namespace()
-    pipeline_shared.pipelines = pipelines
-    pipeline_shared.align = align
+    #manager = multiprocessing.Manager()
+    #pipeline_shared = manager.Namespace()
+    #pipeline_shared.pipelines = pipelines
+    #pipeline_shared.align = align
 
     processing_array = [(device_num, serial_numbers[device_num]) for device_num in range(len(serial_numbers))]
 
     with multiprocessing.Pool(processes=len(serial_numbers)) as p:
-        partial_record_frames = partial(record_frames, pipeline_shared)
-        p.starmap(partial_record_frames, processing_array)
+        #partial_record_frames = partial(record_frames, pipelines, align)
+        time.sleep(5)
+        p.starmap(record_frames, processing_array)
         p.close()
         p.join()
 
