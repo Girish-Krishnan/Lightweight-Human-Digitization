@@ -17,7 +17,6 @@ pipelines = []
 configs = []
 align = []
 profiles = []
-timestamps = []
 
 IMG_SIZE = [640, 480]
 
@@ -142,6 +141,7 @@ color_frames = len(serial_numbers) * [0]
 depth_images = len(serial_numbers) * [0]
 depth_frames = len(serial_numbers) * [0]
 depth_colormaps = len(serial_numbers) * [0]
+timestamps = len(serial_numbers) * [0]
 
 # try:
 #     while True:
