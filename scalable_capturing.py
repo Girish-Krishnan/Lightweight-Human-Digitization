@@ -6,7 +6,7 @@ import json
 import shutil
 import argparse
 
-parser = argparse.ArgumentParser(description='Capture images for calibration')
+parser = argparse.ArgumentParser(description='Capture images')
 parser.add_argument('--hardware_reset',help='reset all camera hardware')
 parser.add_argument('--data_reset',help='delete all capturing data')
 args = parser.parse_args()
