@@ -64,10 +64,7 @@ if __name__ == '__main__':
 
     cam_array = Camera.SynchronousCapture(SERIAL_NUMBERS)
     # Measure time taken to capture
-    start = time.time()
     cam_array.capture()
-    end = time.time()
-    print("Time taken to capture from all cameras: ", end - start)
     cam_array.save()
     cam_array.stop()
 

@@ -245,8 +245,11 @@ class SynchronousCapture:
     def capture(self):
         # Use multi-threading to capture frames from all cameras simultaneously
         with concurrent.futures.ThreadPoolExecutor() as executor:
+            start = time.time()
             futures = [executor.submit(camera.get_frames) for camera in self.cameras]
             concurrent.futures.wait(futures)
+            end = time.time()
+            print("Time taken to capture from all cameras: ", end - start)
 
             results = [future.result() for future in futures]
             if not all(results):
