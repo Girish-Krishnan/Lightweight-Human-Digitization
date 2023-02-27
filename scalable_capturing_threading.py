@@ -126,14 +126,15 @@ color_frames = len(serial_numbers) * [0]
 depth_images = len(serial_numbers) * [0]
 depth_frames = len(serial_numbers) * [0]
 depth_colormaps = len(serial_numbers) * [0]
+timestamps = len(serial_numbers) * [0]
 
 # Define a function to capture image and depth map for each pipeline
 
 def capture_frame(pipeline,i):
     while True:
         frames = pipeline.wait_for_frames()
-        # Print timestamp for frames
-        print("Frame timestamp for camera " + str(i) + " ", frames.get_timestamp())
+        # Get timestamp for frames
+        timestamps[i] = frames.get_timestamp()
         raw_color_frames[i] = frames.get_color_frame()
         aligned_frames = align[i].process(frames)
         color_frames[i] = aligned_frames.get_color_frame()
@@ -176,6 +177,12 @@ def capture_frame(pipeline,i):
                 cv.imwrite('./' + serial_numbers[i] + '/sample_images/image_threading.jpg', color_images[i])
                 np.save('./' + serial_numbers[i] + '/sample_images/depth_map_threading.npy', depth_images[i])
                 cv.imwrite('./' + serial_numbers[i] + '/sample_images/depth_threading.png', depth_colormaps[i])
+
+            # Print timestamps to screen for each camera separately
+
+            for i in range(len(serial_numbers)):
+                print("Camera " + serial_numbers[i] + " timestamp: " + str(timestamps[i]))
+            
             break
     
     

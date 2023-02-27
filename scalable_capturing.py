@@ -16,6 +16,7 @@ pipelines = []
 configs = []
 align = []
 profiles = []
+timestamps = []
 
 IMG_SIZE = [640, 480]
 
@@ -208,8 +209,7 @@ try:
         for i in range(len(serial_numbers)):
 
             frames = pipelines[i].wait_for_frames()
-            # Print the current timestamp
-            print("Capturing timestamp for camera " + str(i) + ": ", str(frames.get_timestamp()))
+            timestamps[i] = frames.get_timestamp()
             raw_color_frames[i] = frames.get_color_frame()
             aligned_frames = align[i].process(frames)
             color_frames[i] = aligned_frames.get_color_frame()
@@ -261,6 +261,11 @@ try:
                 cv.imwrite('./' + serial_numbers[i] + '/sample_images/image.jpg', color_images[i])
                 np.save('./' + serial_numbers[i] + '/sample_images/depth_map.npy', depth_images[i])
                 cv.imwrite('./' + serial_numbers[i] + '/sample_images/depth.png', depth_colormaps[i])
+
+            # Print timestamps for all cameras
+
+            for i in range(len(serial_numbers)):
+                print("Camera " + str(i) + ": " + str(timestamps[i]))
             break
 
 finally:
