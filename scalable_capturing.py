@@ -5,6 +5,7 @@ import numpy as np
 import json
 import shutil
 import argparse
+import time
 
 parser = argparse.ArgumentParser(description='Capture images')
 parser.add_argument('--hardware_reset',help='reset all camera hardware')
@@ -206,6 +207,7 @@ depth_colormaps = len(serial_numbers) * [0]
 try:
     while True:
 
+        start = time.time()
         for i in range(len(serial_numbers)):
 
             frames = pipelines[i].wait_for_frames()
@@ -218,6 +220,8 @@ try:
             if not color_frames[i] or not depth_frames[i]:
                 continue
         
+        end = time.time()
+
         for i in range(len(serial_numbers)):
             # depth_frames[i] = rs.decimation_filter(1).process(depth_frames[i])
             # depth_frames[i] = rs.disparity_transform(True).process(depth_frames[i])
@@ -266,6 +270,10 @@ try:
 
             for i in range(len(serial_numbers)):
                 print("Camera " + str(i) + ": " + str(timestamps[i]))
+
+            # Print time taken for capturing
+            print("Time taken: " + str(end - start))
+            
             break
 
 finally:

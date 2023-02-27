@@ -252,6 +252,7 @@ class SynchronousCapture:
             if not all(results):
                 raise Exception("Failed to capture frames from all cameras")
 
+    def save(self):
         # Save frames from all cameras
         [camera.save_frames() for camera in self.cameras]
 

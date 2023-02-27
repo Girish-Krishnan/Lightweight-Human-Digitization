@@ -6,6 +6,7 @@ from Camera import Camera
 import pyrealsense2 as rs
 import os
 import shutil
+import time
 
 if __name__ == '__main__':
 
@@ -62,7 +63,12 @@ if __name__ == '__main__':
     # Perform synchronous capture
 
     cam_array = Camera.SynchronousCapture(SERIAL_NUMBERS)
+    # Measure time taken to capture
+    start = time.time()
     cam_array.capture()
+    end = time.time()
+    print("Time taken to capture from all cameras: ", end - start)
+    cam_array.save()
     cam_array.stop()
 
     
