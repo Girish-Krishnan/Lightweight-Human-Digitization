@@ -38,6 +38,9 @@ if __name__ == '__main__':
             serial_number = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
             print ('Found device: ', ctx.devices[device_num].get_info(rs.camera_info.name), ' ', serial_number)
 
+            # Disable rs2 option global time enabled
+            ctx.devices[device_num].set_option(rs.option.global_time_enabled, 0)
+
             SERIAL_NUMBERS.append(serial_number)
             
             
