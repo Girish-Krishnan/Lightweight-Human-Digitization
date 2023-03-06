@@ -62,7 +62,7 @@ if NUM_CAMS == 0:
 # Extracting path of individual image stored in a given directory
 images = []
 for i in range(NUM_CAMS):
-    images.append(glob.glob("./" + serial_numbers[i] + "/calibration_images" + "/*" + IMAGE_TYPE))
+    images.append(glob.glob("./Camera_Data/" + serial_numbers[i] + "/calibration_images" + "/*" + IMAGE_TYPE))
 
 image_pairs = combinations(range(NUM_CAMS), 2)  # finding all distinct pairs of cameras
 
@@ -147,14 +147,14 @@ if len(ctx.devices) > 0:
         print("new emitter = ", emitter1)
         depth_sensor.set_option(rs.option.enable_auto_exposure, False)  # disable auto exposure
 
-        if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
+        if not os.path.exists("./Camera_Data/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
           # Create a new directory because it does not exist 
-            os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
+            os.makedirs("./Camera_Data/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number))
 
-        if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images"):
-            os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images")
-        if not os.path.exists(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images"):
-            os.makedirs(ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images")
+        if not os.path.exists("./Camera_Data/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images"):
+            os.makedirs("./Camera_Data/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/sample_images")
+        if not os.path.exists("./Camera_Data/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images"):
+            os.makedirs("./Camera_Data/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + "/calibration_images")
 
     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent=4)
 else:
@@ -259,7 +259,7 @@ try:
             image_count +=1
             print("Saving image: ", image_count)
             for i in range(len(serial_numbers)):
-                cv.imwrite('./' + serial_numbers[i] + '/calibration_images/image_' + str(image_count) + '.jpg', ir_images[i])
+                cv.imwrite('./Camera_Data/' + serial_numbers[i] + '/calibration_images/image_' + str(image_count) + '.jpg', ir_images[i])
 
             if image_count == num_images:
                 break

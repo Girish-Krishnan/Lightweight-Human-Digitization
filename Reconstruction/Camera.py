@@ -4,12 +4,12 @@ IMPORTS
 try:
     import cv2 as cv
     import numpy as np
-    import matplotlib.pyplot as plt
     import open3d as o3d
     import copy
     import pyrealsense2 as rs
     import concurrent.futures
     import time
+    import matplotlib.pyplot as plt
 except ImportError as e:
     print("Failed to import: ", e)
 

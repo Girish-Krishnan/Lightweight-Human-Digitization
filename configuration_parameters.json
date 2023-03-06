@@ -4,7 +4,7 @@
         8,
         11
     ],
-    "num_calibration_imgs": 76,
+    "num_calibration_imgs": 80,
     "img_file_type": ".jpg",
     "threshold": 10,
     "cams": {
