@@ -145,66 +145,6 @@ depth_frames = len(serial_numbers) * [0]
 depth_colormaps = len(serial_numbers) * [0]
 timestamps = len(serial_numbers) * [0]
 
-# try:
-#     while True:
-
-#         for i in range(len(serial_numbers)):
-
-#             frames = pipelines[i].wait_for_frames()
-#             raw_color_frames[i] = frames.get_color_frame()
-#             # aligned_frames = align[i].process(frames)
-#             # color_frames[i] = aligned_frames.get_color_frame()
-#             # depth_frames[i] = aligned_frames.get_depth_frame()
-#             # timestamp = depth_frames[i].get_timestamp()
-#             # if not color_frames[i] or not depth_frames[i]:
-#             #     continue
-        
-#         for i in range(len(serial_numbers)):
-#             # depth_frames[i] = rs.decimation_filter(1).process(depth_frames[i])
-#             # depth_frames[i] = rs.disparity_transform(True).process(depth_frames[i])
-#             # depth_frames[i] = rs.spatial_filter().process(depth_frames[i])
-#             # depth_frames[i] = rs.temporal_filter().process(depth_frames[i])
-#             # depth_frames[i] = rs.disparity_transform(False).process(depth_frames[i])
-
-#             #print("Camera " + str(i) + ": " + str(timestamp))
-
-#             # Convert images to numpy arrays
-#             raw_color_images[i] = np.asanyarray(raw_color_frames[i].get_data())
-#             # color_images[i] = np.asanyarray(color_frames[i].get_data())
-#             # depth_images[i] = np.asanyarray(depth_frames[i].get_data())
-
-#             # depth_colormaps[i] = cv.applyColorMap(cv.convertScaleAbs(depth_images[i], alpha=0.03), cv.COLORMAP_JET)
-
-#         # Stack all images horizontally
-#         stacked_color_images = np.hstack(tuple(raw_color_images))
-#         # stacked_depth_images = np.hstack(tuple(depth_colormaps))
-#         # images = np.vstack((stacked_color_images, stacked_depth_images))
-#         cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
-#         cv.imshow('RealSense', stacked_color_images)
-
-#         ch = cv.waitKey(1)
-#         if ch==32: 
-
-#             depth_frames[i] = rs.decimation_filter(1).process(depth_frames[i])
-#             depth_frames[i] = rs.disparity_transform(True).process(depth_frames[i])
-#             depth_frames[i] = rs.spatial_filter().process(depth_frames[i])
-#             depth_frames[i] = rs.temporal_filter().process(depth_frames[i])
-#             depth_frames[i] = rs.disparity_transform(False).process(depth_frames[i])
-
-#             raw_color_images[i] = np.asanyarray(raw_color_frames[i].get_data())
-#             color_images[i] = np.asanyarray(color_frames[i].get_data())
-#             depth_images[i] = np.asanyarray(depth_frames[i].get_data())
-
-#             depth_colormaps[i] = cv.applyColorMap(cv.convertScaleAbs(depth_images[i], alpha=0.03), cv.COLORMAP_JET)
-
-#             for i in range(len(serial_numbers)):
-#                 print('OK')
-#                 # cv.imwrite('./' + serial_numbers[i] + '/sample_images/raw_image.jpg', raw_color_images[i])
-#                 # cv.imwrite('./' + serial_numbers[i] + '/sample_images/image.jpg', color_images[i])
-#                 # np.save('./' + serial_numbers[i] + '/sample_images/depth_map.npy', depth_images[i])
-#                 # cv.imwrite('./' + serial_numbers[i] + '/sample_images/depth.png', depth_colormaps[i])
-#             break
-
 
 try:
     while True:

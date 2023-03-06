@@ -1,7 +1,7 @@
 """
 IMPORTS
 """
-from Camera import Camera
+from Reconstruction import Camera
 import numpy as np
 import json
 import cv2 as cv
@@ -101,10 +101,10 @@ for i in range(len(cams_list)):
                                  CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation))
 
 for i in range(len(cams_list)):
-    cam[i].add_image(cv.imread("./" + cams_list[i] + "/sample_images/image.jpg"),
-                     np.load("./" + cams_list[i] + "/sample_images/depth_map.npy") * 0.001)
+    cam[i].add_image(cv.imread("./Camera_Data/" + cams_list[i] + "/sample_images/image.jpg"),
+                     np.load("./Camera_Data/" + cams_list[i] + "/sample_images/depth_map.npy") * 0.001)
     cam[i].point_cloud()
-    o3d.io.write_point_cloud("./" + cams_list[i] + '/individual_pcd' + ".ply", cam[i].pcd_o3d)
+    o3d.io.write_point_cloud("./Camera_Data/" + cams_list[i] + '/individual_pcd' + ".ply", cam[i].pcd_o3d)
     cam[i].visualize()
 
 combiner = Camera.Combiner(cam)

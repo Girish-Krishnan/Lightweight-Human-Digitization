@@ -6,3 +6,8 @@
 .cpython-39.pyc
 .cpython-310.pyc
 .idea
+git_push.sh
+.ply
+.idea
+.vscode
+__pycache__

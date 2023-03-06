@@ -1,4 +1,4 @@
-from Camera import Camera
+from Reconstruction import Camera
 import numpy as np
 import json
 import cv2
@@ -104,7 +104,7 @@ for i in range(len(cams_list)):
 
 
 
-video_paths = ['./'+c+'/video.bag' for c in cams_list]
+video_paths = ['./Camera_Data/'+c+'/video.bag' for c in cams_list]
 pipelines = []
 configs = []
 profiles = []
@@ -144,20 +144,6 @@ while True:
                 
                 # Get color frame
                 color_frame = np.asanyarray(frames.get_color_frame().get_data())
-
-                # Colorize depth frame to jet colormap
-                #depth_color_frame = colorizer.colorize(depth_frame)
-
-                # Convert depth_frame to numpy array to render image in opencv
-                #depth_color_image = np.asanyarray(depth_color_frame.get_data())
-
-                # # Render image in opencv window
-                #cv2.imshow("Depth Stream", depth_color_image)
-                #key = cv2.waitKey(1)
-                # # if pressed escape exit program
-                #if key == 27:
-                #    cv2.destroyAllWindows()
-                #    break
 
                 cam[i].add_image(color_frame, depth_frame * 0.001)
                 cam[i].point_cloud()

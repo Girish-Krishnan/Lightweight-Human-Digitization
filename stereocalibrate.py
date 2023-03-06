@@ -13,7 +13,6 @@ from itertools import combinations
 import cv2.aruco as aruco
 from scipy.spatial.transform import Rotation
 from scipy.optimize import least_squares
-#from utils.trajectory_io import *
 import traceback
 import argparse
 import matplotlib.pyplot as plt
@@ -62,7 +61,6 @@ serial_numbers = list(configuration_parameters["cams"].keys())
 objp = np.zeros((CHECKERBOARD[1] * CHECKERBOARD[0], 3), np.float32)
 objp[:, :2] = np.mgrid[0:CHECKERBOARD[1], 0:CHECKERBOARD[0]].T.reshape(-1, 2)
 objp = CHECKERBOARD_SIZE * objp
-# print(objp)
 
 def compute_distance(op, left_mtx, left_dist, left_pts,
                      right_mtx, right_dist, right_pts, R, T):
@@ -110,7 +108,7 @@ if NUM_CAMS == 0:
 # Extracting path of individual image stored in a given directory
 images = []
 for i in range(NUM_CAMS):
-    images.append(glob.glob("./" + serial_numbers[i] + "/calibration_images" + "/*" + IMAGE_TYPE))
+    images.append(glob.glob("./Camera_Data/" + serial_numbers[i] + "/calibration_images" + "/*" + IMAGE_TYPE))
 
 image_pairs = combinations(range(NUM_CAMS), 2)  # finding all distinct pairs of cameras
 
@@ -277,6 +275,3 @@ for pair in image_pairs:
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = r_mat.tolist()
 
     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent=4)
-
-    # write_to_file('odometry.log', 0, np.eye(3), [0, 0, 0])
-    # write_to_file('odometry.log', 1, r_mat, t)

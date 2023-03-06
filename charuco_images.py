@@ -91,12 +91,7 @@ for pair in image_pairs:
     objpoints = []  # Creating vector to store vectors of 3D points for each checkerboard image
     imgpoints_1 = []
 
-# RUN THIS ONCE AND THEN COMMENT IT
-#
-# ctx = rs.context()
-# devices = ctx.query_devices() 
-# for dev in devices:
-#     dev.hardware_reset()
+
 serial_numbers = []
 ctx = rs.context()
 if len(ctx.devices) > 0:
@@ -200,17 +195,6 @@ try:
     while True:
 
         for i in range(len(serial_numbers)):
-
-            # sensor = profiles[i].get_device().query_sensors()[0]
-            # #print(serial_numbers[i])
-        
-            # if set_gain == False:
-            #     try:
-            #         sensor.set_option(rs.option.gain, gain_d415)
-            #     finally:
-            #         set_gain = True
-            
-            # sensor.set_option(rs.option.exposure, exposure_d415)
 
             frames = pipelines[i].wait_for_frames()
 

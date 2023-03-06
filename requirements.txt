@@ -1,9 +1,7 @@
-bpy==3.4.0
 matplotlib==3.6.1
 numpy==1.23.4
 open3d==0.16.1
-open3d_python==0.1.5.5
 opencv_python==4.6.0.66
 pyrealsense2==2.53.1.4623
-scipy==1.9.3
+scipy==1.10.1
 utils==1.0.1

@@ -11,13 +11,11 @@ The __3D Human Modeling System__ is a fast and efficient solution for generating
 * 3D reconstruction using data from any arbitrary number of connected Intel RealSense D415 cameras.
 * Option to use optimization algorithms such as point-to-point ICP and bundle adjustment.
 * Outputs 3D models in __.ply__ file formats.
-* Can be used to reconstruct 3D videos in __.blend__ file format, using a sequence of .ply frames.
 
 ## Requirements
 * Intel RealSense SDK 2.0 or higher
-* _For 3D reconstruction of images:_ Python 3.8 or higher
-* _For 3D reconstruction of video:_ Python 3.10
-* Modules: bpy, matplotlib, numpy, open3d-python, opencv-python, pyrealsense2, scipy, utils
+* Python 3.8 or higher
+* Modules: matplotlib, numpy, open3d-python, opencv-python, pyrealsense2, scipy, utils
 
 ## Installation
 
@@ -43,14 +41,10 @@ pip install -r requirements.txt
 To capture images and depth maps from all currently connected Intel RealSense D415 cameras, run the following:
 
 ```bash
-python scalable_capturing.py
+python capture.py
 ```
 
-The program will identify all connected D415 cameras and open up a window displaying camera feed from all connected cameras.
-
-Press the __spacebar__ to capture images and corresponding depth maps. This will exit the program. The obtained images and depth maps will be stored in the directory __/{serial-number}/sample_images/__ , where {serial-number} represents the camera's unique serial number.
-
-In the same folder, there will also be a file called __video.bag__, which contains the color and depth video captured from each camera from the start of the program until the spacebar is pressed.
+The program will identify all connected D415 cameras and capture an image from each camera simultaneously.
 
 ### Obtaining Calibration Images
 
@@ -59,7 +53,7 @@ To obtain the relative position and orientation between the cameras, the cameras
 To obtain images for calibration, run:
 
 ```bash
-python scalable_calibration_images.py
+python charuco_images.py
 ```
 
 Similar to *scalable_capturing.py*, a window will open showing live video feed from all connected cameras. If a ChArUco board is clearly visible through one or more cameras, the ArUco markers are detected and highlighted.
@@ -73,7 +67,7 @@ Align the ChArUco board so that it is highlighted in at least two of the camera 
 To calibrate the cameras relative to one another, run:
 
 ```bash
-python scalable_stereocalibration.py
+python stereocalibrate.py
 ```
 
 This will calibrate the cameras and store the calibration data in *configuration_parameters.json*
@@ -83,26 +77,7 @@ This will calibrate the cameras and store the calibration data in *configuration
 To obtain a complete 3D human point cloud after calibration, run:
 
 ```bash
-python combine_pcd_arbitrary_cams.py
+python combine_pcd.py
 ```
 
 This will first show the individual point clouds for each camera (obtained using camera intrinsics) and finally show the complete point cloud obtained with the help of the extrinsic parameters.
-
-### [Work in Progress] Video Reconstruction
-
-To reconstruct each frame of the video captured (in *video.bag*) and store each frame as a .ply file, run:
-
-```bash
-mkdir reconstructed_video
-python video_3d_reconstruction.py
-```
-
-To convert the sequence of .ply files into a .blend 3D animation/video that can be viewed in Blender, run:
-
-```bash
-python frames_to_blend.py
-```
-
-*Note: this last step requires exclusively python 3.10 as it uses the Blender Python API.*
-
-The resulting .blend file will be stored in reconstructed_video/3d_video.blend and can be visualized in Blender.
