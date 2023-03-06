@@ -12,7 +12,6 @@ import copy
 import pyrealsense2 as rs
 import concurrent.futures
 import time
-import multiprocessing
 
 """
 Classes for 3D reconstruction
@@ -198,6 +197,7 @@ class RealSenseCamera:
         self.depth_sensor.set_option(rs.option.emitter_enabled, 1)
         self.depth_sensor.set_option(rs.option.enable_auto_exposure, True)
         self.depth_sensor.set_option(rs.option.laser_power, 360)
+        self.depth_sensor.set_option(rs.option.global_time_enabled, 1)
 
     def get_frames(self):
         # Get frameset of color and depth
@@ -253,49 +253,28 @@ class SynchronousCapture:
                 start = time.time()
                 futures = [executor.submit(camera.get_frames) for camera in self.cameras]
                 concurrent.futures.wait(futures)
-                end = time.time()
                 results = [future.result() for future in futures]
-
+                end = time.time()
+                print(results)
                 if not all(results):
                     continue
 
                 else:
                     # Print out timestamp of each result frame
                     for i, result in enumerate(results):
-                        print("Camera ", self.serial_numbers[i], " timestamp: ", result.get_timestamp())
-                        # Find standard deviation of timestamps
-                        timestamps = [result.get_timestamp() for result in results]
-                        print("Standard deviation of timestamps: ", np.std(timestamps))
-                        # Find range of timestamps
-                        print("Range of timestamps: ", max(timestamps) - min(timestamps))
+                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
+                        print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp)
+                    
+                    # Find standard deviation of timestamps
+                    timestamps = [result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival) for result in results]
+                    print("Standard deviation of timestamps: ", np.std(timestamps))
+                    # Find range of timestamps
+                    print("Range of timestamps: ", max(timestamps) - min(timestamps))
 
-                    print("Time taken to capture frames from all cameras: ", end - start)
+                    print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
 
                     # Process frames
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        start = time.time()
-                        futures = [executor.submit(camera.process_frames, results[i]) for i, camera in enumerate(self.cameras)]
-                        results = [future.result() for future in futures]
-                        end = time.time()
-                        if all(results):
-                            print("Time taken to process frames from all cameras: ", end - start)
-
-                            # Save frames
-                            with concurrent.futures.ThreadPoolExecutor() as executor:
-                                start = time.time()
-                                futures = [executor.submit(camera.save_frames) for camera in self.cameras]
-                                results = [future.result() for future in futures]
-                                end = time.time()
-                                if all(results):
-                                    print("Time taken to save frames from all cameras: ", end - start)
-                                    return
-                                else:
-                                    print("Failed to save frames from all cameras")
-                                    continue
-                        else:
-                            print("Failed to process frames from all cameras")
-                            continue
-
+                    [camera.process_frames(results[i]) for i, camera in enumerate(self.cameras)]
                     break
 
     def save(self):

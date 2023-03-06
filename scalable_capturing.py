@@ -121,6 +121,8 @@ if len(ctx.devices) > 0:
         depth_sensor.set_option(rs.option.laser_power, 360)  # max laser power
         print("laser power: ", depth_sensor.get_option(rs.option.laser_power))
 
+        depth_sensor.set_option(rs.option.global_time_enabled, 1)
+
     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent = 4)    
 
 else:
@@ -211,7 +213,7 @@ try:
         for i in range(len(serial_numbers)):
 
             frames = pipelines[i].wait_for_frames()
-            timestamps[i] = frames.get_timestamp()
+            timestamps[i] = frames.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
             raw_color_frames[i] = frames.get_color_frame()
             aligned_frames = align[i].process(frames)
             color_frames[i] = aligned_frames.get_color_frame()
