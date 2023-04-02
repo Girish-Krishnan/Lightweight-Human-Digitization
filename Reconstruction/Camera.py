@@ -249,6 +249,8 @@ class RealSenseCamera:
         self.depth_sensor.set_option(rs.option.enable_auto_exposure, True)
         self.depth_sensor.set_option(rs.option.laser_power, 360)
         self.depth_sensor.set_option(rs.option.global_time_enabled, 1)
+        # enable sync between multiple cameras
+        self.depth_sensor.set_option(rs.option.inter_cam_sync_mode, 1)
 
     def get_frames(self):
         """
@@ -323,6 +325,9 @@ class SynchronousCapture:
                     continue
 
                 else:
+                    print("#############################################")
+                    print("Results")
+                    print("#############################################")
                     # Print out timestamp of each result frame
                     for i, result in enumerate(results):
                         timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
@@ -335,6 +340,7 @@ class SynchronousCapture:
                     print("Range of timestamps: ", max(timestamps) - min(timestamps))
 
                     print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
+                    print("#############################################")
 
                     # Process frames
                     [camera.process_frames(results[i]) for i, camera in enumerate(self.cameras)]
