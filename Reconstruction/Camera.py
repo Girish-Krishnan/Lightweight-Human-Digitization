@@ -12,7 +12,7 @@ try:
     import time
     import matplotlib.pyplot as plt
 except ImportError as e:
-    print("Failed to import: ", e)
+    pass
 
 """
 Classes for 3D reconstruction
@@ -236,9 +236,9 @@ class RealSenseCamera:
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         self.config.enable_device(serial_number)
-        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 60)
-        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 60)
-        self.config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
+        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        self.config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 30)
 
         # Start streaming
         self.pipeline.start(self.config)
@@ -247,7 +247,9 @@ class RealSenseCamera:
         self.profile = self.pipeline.get_active_profile()
         self.depth_sensor = self.profile.get_device().first_depth_sensor()
         self.depth_sensor.set_option(rs.option.emitter_enabled, 1)
-        self.depth_sensor.set_option(rs.option.enable_auto_exposure, True)
+        #self.depth_sensor.set_option(rs.option.enable_auto_exposure, 1)
+        #self.depth_sensor.set_option(rs.option.enable_auto_white_balance, 1)
+        #self.depth_sensor.set_option(rs.option.output_trigger_enabled, 1)
         self.depth_sensor.set_option(rs.option.laser_power, 360)
         self.depth_sensor.set_option(rs.option.global_time_enabled, 1)
         # enable sync between multiple cameras
@@ -304,10 +306,16 @@ class SynchronousCapture:
 
     def __init__(self, serial_numbers) -> None:
         self.serial_numbers = serial_numbers
-        self.cameras = [RealSenseCamera(serial_number) for serial_number in serial_numbers]
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(self.get_camera,serial_number) for serial_number in serial_numbers]
+            self.cameras = [future.result() for future in futures]
+        
         # Wait for some time to allow camera to stabilize and adjust
         print("Waiting for cameras to stabilize...")
-        time.sleep(3)
+        time.sleep(5)
+    
+    def get_camera(self,serial_number):
+        return RealSenseCamera(serial_number)
 
     def capture(self):
         """
@@ -321,7 +329,7 @@ class SynchronousCapture:
                 concurrent.futures.wait(futures)
                 results = [future.result() for future in futures]
                 end = time.time()
-                print(results)
+                #print(results)
                 if not all(results):
                     continue
 
@@ -340,7 +348,7 @@ class SynchronousCapture:
                     # Find range of timestamps
                     print("Range of timestamps: ", max(timestamps) - min(timestamps))
 
-                    print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
+                    #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
                     print("#############################################")
 
                     # Process frames

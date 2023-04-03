@@ -1,6 +1,7 @@
 from Reconstruction import Camera
 import argparse
 import pyrealsense2 as rs
+import time
 
 parser = argparse.ArgumentParser(description='Capture images')
 # Add one required argument for the serial number
@@ -11,7 +12,10 @@ args = parser.parse_args()
 camera = Camera.RealSenseCamera(args.serial_number)
 
 # Capture images
+print(time.time())
 frames = camera.get_frames()
+while len(frames) == 0:
+    frames = camera.get_frames()
 
 # Print timestamp of frames
 print("Timestamp of frames:")
