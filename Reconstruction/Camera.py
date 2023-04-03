@@ -8,6 +8,7 @@ try:
     import copy
     import pyrealsense2 as rs
     import concurrent.futures
+    import subprocess
     import time
     import matplotlib.pyplot as plt
 except ImportError as e:
