@@ -259,7 +259,7 @@ class RealSenseCamera:
         """
         :return: The frameset of the RealSenseCamera object
         """
-        return self.pipeline.poll_for_frames()
+        return self.pipeline.wait_for_frames()
         
     def process_frames(self, frames):
         """
@@ -306,16 +306,12 @@ class SynchronousCapture:
 
     def __init__(self, serial_numbers) -> None:
         self.serial_numbers = serial_numbers
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(self.get_camera,serial_number) for serial_number in serial_numbers]
-            self.cameras = [future.result() for future in futures]
+        
+        self.cameras = [RealSenseCamera(serial_number) for serial_number in serial_numbers]
         
         # Wait for some time to allow camera to stabilize and adjust
         print("Waiting for cameras to stabilize...")
         time.sleep(5)
-    
-    def get_camera(self,serial_number):
-        return RealSenseCamera(serial_number)
 
     def capture(self):
         """
@@ -339,11 +335,12 @@ class SynchronousCapture:
                     print("#############################################")
                     # Print out timestamp of each result frame
                     for i, result in enumerate(results):
-                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
-                        print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp)
+                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp)
+                        domain = result.get_frame_timestamp_domain()
+                        print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
                     
                     # Find standard deviation of timestamps
-                    timestamps = [result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival) for result in results]
+                    timestamps = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results]
                     print("Standard deviation of timestamps: ", np.std(timestamps))
                     # Find range of timestamps
                     print("Range of timestamps: ", max(timestamps) - min(timestamps))
