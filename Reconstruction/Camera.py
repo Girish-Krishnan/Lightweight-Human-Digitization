@@ -9,6 +9,7 @@ try:
     import pyrealsense2 as rs
     import concurrent.futures
     import subprocess
+    import itertools
     import time
     import matplotlib.pyplot as plt
 except ImportError as e:
@@ -236,9 +237,9 @@ class RealSenseCamera:
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         self.config.enable_device(serial_number)
-        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-        self.config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 30)
+        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 60)
+        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 60)
+        self.config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
 
         # Start streaming
         self.pipeline.start(self.config)
@@ -259,7 +260,7 @@ class RealSenseCamera:
         """
         :return: The frameset of the RealSenseCamera object
         """
-        return self.pipeline.wait_for_frames()
+        return self.pipeline.poll_for_frames()
         
     def process_frames(self, frames):
         """
@@ -323,10 +324,19 @@ class SynchronousCapture:
                 start = time.time()
                 futures = [executor.submit(camera.get_frames) for camera in self.cameras]
                 concurrent.futures.wait(futures)
-                results = [future.result() for future in futures]
+                results_1 = [future.result() for future in futures]
+
+                futures = [executor.submit(camera.get_frames) for camera in self.cameras]
+                concurrent.futures.wait(futures)
+                results_2 = [future.result() for future in futures]
+
+                futures = [executor.submit(camera.get_frames) for camera in self.cameras]
+                concurrent.futures.wait(futures)
+                results_3 = [future.result() for future in futures]
+
                 end = time.time()
                 #print(results)
-                if not all(results):
+                if not all(results_1) or not all(results_2) or not all(results_3):
                     continue
 
                 else:
@@ -334,24 +344,69 @@ class SynchronousCapture:
                     print("Results")
                     print("#############################################")
                     # Print out timestamp of each result frame
-                    for i, result in enumerate(results):
+                    for i, result in enumerate(results_1):
+                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp)
+                        domain = result.get_frame_timestamp_domain()
+                        print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
+
+                    for i, result in enumerate(results_2):
+                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp)
+                        domain = result.get_frame_timestamp_domain()
+                        print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
+
+                    for i, result in enumerate(results_3):
                         timestamp = result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp)
                         domain = result.get_frame_timestamp_domain()
                         print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
                     
+                    results = [results_1, results_2, results_3]
+                    # Transpose the list of lists, similar to a matrix transpose
+                    results = list(map(list, zip(*results)))
+
                     # Find standard deviation of timestamps
-                    timestamps = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results]
+                    timestamps_1 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_1]
+                    timestamps_2 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_2]
+                    timestamps_3 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_3]
+
+                    timestamps, timestamp_range, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
+
                     print("Standard deviation of timestamps: ", np.std(timestamps))
                     # Find range of timestamps
-                    print("Range of timestamps: ", max(timestamps) - min(timestamps))
+                    print("Range of timestamps: ", timestamp_range)
 
                     #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
                     print("#############################################")
 
+                    best_results = []
+
+                    for i in range(len(self.cameras)):
+                        best_results.append(results[i][frame_indices[i]])
+
                     # Process frames
-                    [camera.process_frames(results[i]) for i, camera in enumerate(self.cameras)]
+                    [camera.process_frames(best_results[i]) for i, camera in enumerate(self.cameras)]
                     break
 
+    
+    def closest_timestamps(self, *lists):
+        """
+        Given a list of lists (all lists the same length)
+        choose one number from each list such that range of chosen numbers is minimized
+        You can for example choose the first element from list 1, the third element from list 2, etc.
+        The function returns the chosen numbers and the range of the chosen numbers
+        """
+        # Create a list of lists of all possible combinations
+        all_combinations = list(itertools.product(*lists))
+        # Find the combination with the smallest range
+        min_range = min([max(combination) - min(combination) for combination in all_combinations])
+        # Find the index of the combination with the smallest range
+        min_range_index = [max(combination) - min(combination) for combination in all_combinations].index(min_range)
+
+        # Find the indices of the combination from each list
+        indices = [list.index(combination) for list, combination in zip(lists, all_combinations[min_range_index])]
+        
+        # Return the combination with the smallest range, the range value, and the indices of the combination from each list
+        return all_combinations[min_range_index], min_range, indices
+    
     def save(self):
         """
         Save frames from all cameras simultaneously
