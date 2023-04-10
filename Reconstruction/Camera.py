@@ -260,7 +260,7 @@ class RealSenseCamera:
         """
         :return: The frameset of the RealSenseCamera object
         """
-        return self.pipeline.poll_for_frames()
+        return self.pipeline.wait_for_frames()
         
     def process_frames(self, frames):
         """
@@ -322,20 +322,20 @@ class SynchronousCapture:
         while True:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 start = time.time()
-                futures = [executor.submit(camera.get_frames) for camera in self.cameras]
-                concurrent.futures.wait(futures)
-                results_1 = [future.result() for future in futures]
+                futures_1 = [executor.submit(camera.get_frames) for camera in self.cameras]
+                concurrent.futures.wait(futures_1)
+                results_1 = [future.result() for future in futures_1]
 
-                futures = [executor.submit(camera.get_frames) for camera in self.cameras]
-                concurrent.futures.wait(futures)
-                results_2 = [future.result() for future in futures]
+                futures_2 = [executor.submit(camera.get_frames) for camera in self.cameras]
+                concurrent.futures.wait(futures_2)
+                results_2 = [future.result() for future in futures_2]
 
-                futures = [executor.submit(camera.get_frames) for camera in self.cameras]
-                concurrent.futures.wait(futures)
-                results_3 = [future.result() for future in futures]
+                futures_3 = [executor.submit(camera.get_frames) for camera in self.cameras]
+                concurrent.futures.wait(futures_3)
+                results_3 = [future.result() for future in futures_3]
 
                 end = time.time()
-                #print(results)
+
                 if not all(results_1) or not all(results_2) or not all(results_3):
                     continue
 
@@ -345,17 +345,17 @@ class SynchronousCapture:
                     print("#############################################")
                     # Print out timestamp of each result frame
                     for i, result in enumerate(results_1):
-                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp)
+                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
                         domain = result.get_frame_timestamp_domain()
                         print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
 
                     for i, result in enumerate(results_2):
-                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp)
+                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
                         domain = result.get_frame_timestamp_domain()
                         print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
 
                     for i, result in enumerate(results_3):
-                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp)
+                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
                         domain = result.get_frame_timestamp_domain()
                         print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
                     
@@ -364,11 +364,13 @@ class SynchronousCapture:
                     results = list(map(list, zip(*results)))
 
                     # Find standard deviation of timestamps
-                    timestamps_1 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_1]
-                    timestamps_2 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_2]
-                    timestamps_3 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_3]
+                    timestamps_1 = [result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival) for result in results_1]
+                    timestamps_2 = [result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival) for result in results_2]
+                    timestamps_3 = [result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival) for result in results_3]
+                    all_timestamps = [timestamps_1, timestamps_2, timestamps_3]
+                    all_timestamps = list(map(list, zip(*all_timestamps)))
 
-                    timestamps, timestamp_range, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
+                    timestamps, timestamp_range, frame_indices = self.closest_timestamps(*all_timestamps)
 
                     print("Standard deviation of timestamps: ", np.std(timestamps))
                     # Find range of timestamps
@@ -378,6 +380,10 @@ class SynchronousCapture:
                     print("#############################################")
 
                     best_results = []
+
+                    print("Indices of best frames (0, 1, or 2) for each cam")
+
+                    print(frame_indices)
 
                     for i in range(len(self.cameras)):
                         best_results.append(results[i][frame_indices[i]])
