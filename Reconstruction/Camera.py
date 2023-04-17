@@ -345,17 +345,18 @@ class SynchronousCapture:
                     print("#############################################")
                     # Print out timestamp of each result frame
                     for i, result in enumerate(results_1):
-                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
+                        # timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
+                        timestamp = result.get_timestamp()
                         domain = result.get_frame_timestamp_domain()
                         print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
 
                     for i, result in enumerate(results_2):
-                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
+                        timestamp = result.get_timestamp()
                         domain = result.get_frame_timestamp_domain()
                         print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
 
                     for i, result in enumerate(results_3):
-                        timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
+                        timestamp = result.get_timestamp()
                         domain = result.get_frame_timestamp_domain()
                         print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
                     
@@ -365,8 +366,8 @@ class SynchronousCapture:
 
                     # Find standard deviation of timestamps
                     timestamps_1 = [result.get_timestamp() for result in results_1]
-                    timestamps_2 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_2]
-                    timestamps_3 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_3]
+                    timestamps_2 = [result.get_timestamp() for result in results_2]
+                    timestamps_3 = [result.get_timestamp() for result in results_3]
 
                     # Find the average difference between the values in timestamps_1 and timestamps_2 and timestamps_3
                     timestamps = np.array([timestamps_1, timestamps_2, timestamps_3])
