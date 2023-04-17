@@ -380,8 +380,8 @@ class SynchronousCapture:
 
                         print("#### USING A SINGLE FRAME ####")
 
-                        single_range = np.max(timestamps_1) - np.min(timestamps_1)
-                        single_mean_diff = np.mean(np.abs(np.array(timestamps_1) - timestamps_1[0]))
+                        single_range = np.max(timestamps_2) - np.min(timestamps_2)
+                        single_mean_diff = np.mean(np.abs(np.array(timestamps_2) - timestamps_2[0]))
 
                         print("Range of timestamps: ", single_range)
                         print("Mean difference between timestamps: ", single_mean_diff)
@@ -431,6 +431,30 @@ class SynchronousCapture:
         mean_diff = np.mean(np.abs(chosen - reference_timestamp))
 
         return timestamps, timestamp_range, mean_diff, frame_indices
+
+    def closest_timestamps_brute_force(self, *lists):
+        """
+        Given a list of lists (all lists the same length)
+        choose one number from each list such that range of chosen numbers is minimized
+        You can for example choose the first element from list 1, the third element from list 2, etc.
+        The function returns the chosen numbers and the range of the chosen numbers
+        """
+        # Create a list of lists of all possible combinations
+        all_combinations = list(itertools.product(*lists))
+        # Find the combination with the smallest range
+        min_range = min([max(combination) - min(combination) for combination in all_combinations])
+        # Find the index of the combination with the smallest range
+        min_range_index = [max(combination) - min(combination) for combination in all_combinations].index(min_range)
+
+        # Find the indices of the combination from each list
+        indices = [list.index(combination) for list, combination in zip(lists, all_combinations[min_range_index])]
+
+        chosen = all_combinations[min_range_index]
+        # Find mean difference between timestamps
+        mean_diff = np.mean(np.abs(chosen - chosen[0]))
+        
+        # Return the combination with the smallest range, the range value, and the indices of the combination from each list
+        return chosen, min_range, mean_diff, indices
 
     def save(self):
         """
