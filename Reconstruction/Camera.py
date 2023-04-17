@@ -408,7 +408,7 @@ class SynchronousCapture:
         timestamp_range = np.max(chosen) - np.min(chosen)
 
         # Find mean difference between timestamps
-        mean_diff = np.mean(np.diff(chosen))
+        mean_diff = np.mean(np.abs(chosen - reference_timestamp))
 
         return timestamps, timestamp_range, mean_diff, frame_indices
 
