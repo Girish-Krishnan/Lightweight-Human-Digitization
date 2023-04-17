@@ -364,13 +364,13 @@ class SynchronousCapture:
                     results = list(map(list, zip(*results)))
 
                     # Find standard deviation of timestamps
-                    timestamps_1 = [result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival) for result in results_1]
-                    timestamps_2 = [result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival) for result in results_2]
-                    timestamps_3 = [result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival) for result in results_3]
-                    all_timestamps = [timestamps_1, timestamps_2, timestamps_3]
-                    all_timestamps = list(map(list, zip(*all_timestamps)))
+                    timestamps_1 = [result.get_timestamp() for result in results_1]
+                    timestamps_2 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_2]
+                    timestamps_3 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_3]
 
-                    timestamps, timestamp_range, frame_indices = self.closest_timestamps(*all_timestamps)
+                    print("Mean difference between timestamps 1, 2 and 3 for each camera: ", np.mean(np.transpose(np.array([timestamps_1, timestamps_2, timestamps_3])),axis=1))
+
+                    timestamps, timestamp_range, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
 
                     print("Standard deviation of timestamps: ", np.std(timestamps))
                     # Find range of timestamps
@@ -391,28 +391,25 @@ class SynchronousCapture:
                     # Process frames
                     [camera.process_frames(best_results[i]) for i, camera in enumerate(self.cameras)]
                     break
-
     
-    def closest_timestamps(self, *lists):
-        """
-        Given a list of lists (all lists the same length)
-        choose one number from each list such that range of chosen numbers is minimized
-        You can for example choose the first element from list 1, the third element from list 2, etc.
-        The function returns the chosen numbers and the range of the chosen numbers
-        """
-        # Create a list of lists of all possible combinations
-        all_combinations = list(itertools.product(*lists))
-        # Find the combination with the smallest range
-        min_range = min([max(combination) - min(combination) for combination in all_combinations])
-        # Find the index of the combination with the smallest range
-        min_range_index = [max(combination) - min(combination) for combination in all_combinations].index(min_range)
+    def closest_timestamps(self,*timestamps):
 
-        # Find the indices of the combination from each list
-        indices = [list.index(combination) for list, combination in zip(lists, all_combinations[min_range_index])]
+        timestamps = np.array(timestamps)
+        timestamps = np.transpose(timestamps)
+
+        center_frame_idx = timestamps.shape[1] // 2
+        reference_timestamp = timestamps[0][center_frame_idx]
+
+        frame_indices = []
+
+        for i in range(timestamps.shape[0]):
+            frame_indices.append(np.argmin(np.abs(timestamps[i] - reference_timestamp)))
         
-        # Return the combination with the smallest range, the range value, and the indices of the combination from each list
-        return all_combinations[min_range_index], min_range, indices
-    
+        chosen = timestamps[:,frame_indices]
+        timestamp_range = np.max(chosen) - np.min(chosen)
+
+        return timestamps, timestamp_range, frame_indices
+
     def save(self):
         """
         Save frames from all cameras simultaneously
