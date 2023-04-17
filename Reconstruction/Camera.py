@@ -368,7 +368,13 @@ class SynchronousCapture:
                     timestamps_2 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_2]
                     timestamps_3 = [result.get_frame_metadata(rs.frame_metadata_value.sensor_timestamp) for result in results_3]
 
-                    print("Mean difference between timestamps 1, 2 and 3 for each camera: ", np.mean(np.transpose(np.array([timestamps_1, timestamps_2, timestamps_3])),axis=1))
+                    # Find the average difference between the values in timestamps_1 and timestamps_2 and timestamps_3
+                    timestamps = np.array([timestamps_1, timestamps_2, timestamps_3])
+                    timestamps = np.transpose(timestamps)
+                    # mean difference
+                    timestamps = np.mean(np.diff(timestamps, axis=1), axis=1)
+
+                    print("Mean difference between timestamps 1,2, and 3 for each camera", timestamps)
 
                     timestamps, timestamp_range, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
 
