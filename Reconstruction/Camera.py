@@ -319,77 +319,97 @@ class SynchronousCapture:
         Capture frames from all cameras simultaneously
         """
 
-        while True:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                start = time.time()
-                futures_1 = [executor.submit(camera.get_frames) for camera in self.cameras]
-                concurrent.futures.wait(futures_1)
-                results_1 = [future.result() for future in futures_1]
+        data_file = open("test_data.csv", "w")
+        data_file.write("Range (single frame), Mean difference (single frame), Range (3 frames) , Mean difference (3 frames)\n")
+        data_file.close()
 
-                futures_2 = [executor.submit(camera.get_frames) for camera in self.cameras]
-                concurrent.futures.wait(futures_2)
-                results_2 = [future.result() for future in futures_2]
+        data_file = open("test_data.csv", "a")
 
-                futures_3 = [executor.submit(camera.get_frames) for camera in self.cameras]
-                concurrent.futures.wait(futures_3)
-                results_3 = [future.result() for future in futures_3]
+        for i in range(20):
+            while True:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    start = time.time()
+                    futures_1 = [executor.submit(camera.get_frames) for camera in self.cameras]
+                    concurrent.futures.wait(futures_1)
+                    results_1 = [future.result() for future in futures_1]
 
-                end = time.time()
+                    futures_2 = [executor.submit(camera.get_frames) for camera in self.cameras]
+                    concurrent.futures.wait(futures_2)
+                    results_2 = [future.result() for future in futures_2]
 
-                if not all(results_1) or not all(results_2) or not all(results_3):
-                    continue
+                    futures_3 = [executor.submit(camera.get_frames) for camera in self.cameras]
+                    concurrent.futures.wait(futures_3)
+                    results_3 = [future.result() for future in futures_3]
 
-                else:
-                    print("#############################################")
-                    print("Results")
-                    print("#############################################")
-                    # Print out timestamp of each result frame
-                    for i, result in enumerate(results_1):
-                        # timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
-                        timestamp = result.get_timestamp()
-                        domain = result.get_frame_timestamp_domain()
-                        print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
+                    end = time.time()
 
-                    for i, result in enumerate(results_2):
-                        timestamp = result.get_timestamp()
-                        domain = result.get_frame_timestamp_domain()
-                        print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
+                    if not all(results_1) or not all(results_2) or not all(results_3):
+                        continue
 
-                    for i, result in enumerate(results_3):
-                        timestamp = result.get_timestamp()
-                        domain = result.get_frame_timestamp_domain()
-                        print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
-                    
-                    results = [results_1, results_2, results_3]
-                    # Transpose the list of lists, similar to a matrix transpose
-                    results = list(map(list, zip(*results)))
+                    else:
+                        print("#############################################")
+                        print("Results")
+                        print("#############################################")
+                        # Print out timestamp of each result frame
+                        for i, result in enumerate(results_1):
+                            # timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
+                            timestamp = result.get_timestamp()
+                            domain = result.get_frame_timestamp_domain()
+                            print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
 
-                    # Find standard deviation of timestamps
-                    timestamps_1 = [result.get_timestamp() for result in results_1]
-                    timestamps_2 = [result.get_timestamp() for result in results_2]
-                    timestamps_3 = [result.get_timestamp() for result in results_3]
+                        for i, result in enumerate(results_2):
+                            timestamp = result.get_timestamp()
+                            domain = result.get_frame_timestamp_domain()
+                            print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
 
-                    timestamps, timestamp_range, mean_diff, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
+                        for i, result in enumerate(results_3):
+                            timestamp = result.get_timestamp()
+                            domain = result.get_frame_timestamp_domain()
+                            print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
+                        
+                        results = [results_1, results_2, results_3]
+                        # Transpose the list of lists, similar to a matrix transpose
+                        results = list(map(list, zip(*results)))
 
-                    print("Standard deviation of timestamps: ", np.std(timestamps))
-                    print("Range of timestamps: ", timestamp_range)
-                    print("Mean difference between timestamps: ", mean_diff)
+                        # Find standard deviation of timestamps
+                        timestamps_1 = [result.get_timestamp() for result in results_1]
+                        timestamps_2 = [result.get_timestamp() for result in results_2]
+                        timestamps_3 = [result.get_timestamp() for result in results_3]
 
-                    #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
-                    print("#############################################")
+                        timestamps, timestamp_range, mean_diff, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
 
-                    best_results = []
+                        print("#### USING A SINGLE FRAME ####")
 
-                    print("Indices of best frames (0, 1, or 2) for each cam")
+                        single_range = np.max(timestamps_1) - np.min(timestamps_1)
+                        single_mean_diff = np.mean(np.abs(np.array(timestamps_1) - timestamps_1[0]))
 
-                    print(frame_indices)
+                        print("Range of timestamps: ", single_range)
+                        print("Mean difference between timestamps: ", single_mean_diff)
 
-                    for i in range(len(self.cameras)):
-                        best_results.append(results[i][frame_indices[i]])
+                        print("#### USING A BUFFER OF 3 FRAMES ####")
 
-                    # Process frames
-                    [camera.process_frames(best_results[i]) for i, camera in enumerate(self.cameras)]
-                    break
+                        print("Range of timestamps: ", timestamp_range)
+                        print("Mean difference between timestamps: ", mean_diff)
+
+                        data_file.write(f"{single_range},{single_mean_diff},{timestamp_range},{mean_diff}\n")
+
+                        #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
+                        print("#############################################")
+
+                        best_results = []
+
+                        print("Indices of best frames (0, 1, or 2) for each cam")
+
+                        print(frame_indices)
+
+                        for i in range(len(self.cameras)):
+                            best_results.append(results[i][frame_indices[i]])
+
+                        # Process frames
+                        [camera.process_frames(best_results[i]) for i, camera in enumerate(self.cameras)]
+                        break
+        
+        data_file.close()
     
     def closest_timestamps(self,*timestamps):
 
