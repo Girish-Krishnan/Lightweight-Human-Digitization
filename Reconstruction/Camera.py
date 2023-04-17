@@ -369,19 +369,11 @@ class SynchronousCapture:
                     timestamps_2 = [result.get_timestamp() for result in results_2]
                     timestamps_3 = [result.get_timestamp() for result in results_3]
 
-                    # Find the average difference between the values in timestamps_1 and timestamps_2 and timestamps_3
-                    timestamps = np.array([timestamps_1, timestamps_2, timestamps_3])
-                    timestamps = np.transpose(timestamps)
-                    # mean difference
-                    timestamps = np.mean(np.diff(timestamps, axis=1), axis=1)
-
-                    print("Mean difference between timestamps 1,2, and 3 for each camera", timestamps)
-
-                    timestamps, timestamp_range, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
+                    timestamps, timestamp_range, mean_diff, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
 
                     print("Standard deviation of timestamps: ", np.std(timestamps))
-                    # Find range of timestamps
                     print("Range of timestamps: ", timestamp_range)
+                    print("Mean difference between timestamps: ", mean_diff)
 
                     #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
                     print("#############################################")
@@ -415,7 +407,10 @@ class SynchronousCapture:
         chosen = timestamps[:,frame_indices]
         timestamp_range = np.max(chosen) - np.min(chosen)
 
-        return timestamps, timestamp_range, frame_indices
+        # Find mean difference between timestamps
+        mean_diff = np.mean(np.diff(chosen))
+
+        return timestamps, timestamp_range, mean_diff, frame_indices
 
     def save(self):
         """
