@@ -320,12 +320,12 @@ class SynchronousCapture:
         """
 
         data_file = open("test_data.csv", "w")
-        data_file.write("Range (single frame), Mean difference (single frame), Range (3 frames) , Mean difference (3 frames)\n")
+        data_file.write("Experiment,Range (single frame), Mean difference (single frame), Range (3 frames) , Mean difference (3 frames), Range (3 frames, original), Mean difference (3 frames, original)\n")
         data_file.close()
 
         data_file = open("test_data.csv", "a")
 
-        for i in range(20):
+        for j in range(20):
             while True:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     start = time.time()
@@ -377,6 +377,7 @@ class SynchronousCapture:
                         timestamps_3 = [result.get_timestamp() for result in results_3]
 
                         timestamps, timestamp_range, mean_diff, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
+                        timestamps_exp, timestamp_range_exp, mean_diff_exp, frame_indices_exp = self.closest_timestamps_brute_force(timestamps_1, timestamps_2, timestamps_3)
 
                         print("#### USING A SINGLE FRAME ####")
 
@@ -391,7 +392,7 @@ class SynchronousCapture:
                         print("Range of timestamps: ", timestamp_range)
                         print("Mean difference between timestamps: ", mean_diff)
 
-                        data_file.write(f"{single_range},{single_mean_diff},{timestamp_range},{mean_diff}\n")
+                        data_file.write(f"{j+1},{single_range},{single_mean_diff},{timestamp_range},{mean_diff},{timestamp_range_exp},{mean_diff_exp}\n")
 
                         #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
                         print("#############################################")
@@ -451,7 +452,7 @@ class SynchronousCapture:
 
         chosen = all_combinations[min_range_index]
         # Find mean difference between timestamps
-        mean_diff = np.mean(np.abs(chosen - chosen[0]))
+        mean_diff = np.mean(np.abs(np.array(chosen) - chosen[0]))
         
         # Return the combination with the smallest range, the range value, and the indices of the combination from each list
         return chosen, min_range, mean_diff, indices
