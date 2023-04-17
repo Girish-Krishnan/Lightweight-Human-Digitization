@@ -377,7 +377,6 @@ class SynchronousCapture:
                         timestamps_3 = [result.get_timestamp() for result in results_3]
 
                         timestamps, timestamp_range, mean_diff, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
-                        timestamps_exp, timestamp_range_exp, mean_diff_exp, frame_indices_exp = self.closest_timestamps_brute_force(timestamps_1, timestamps_2, timestamps_3)
 
                         print("#### USING A SINGLE FRAME ####")
 
@@ -392,7 +391,7 @@ class SynchronousCapture:
                         print("Range of timestamps: ", timestamp_range)
                         print("Mean difference between timestamps: ", mean_diff)
 
-                        data_file.write(f"{j+1},{single_range},{single_mean_diff},{timestamp_range},{mean_diff},{timestamp_range_exp},{mean_diff_exp}\n")
+                        data_file.write(f"{j+1},{single_range},{single_mean_diff},{timestamp_range},{mean_diff}\n")
 
                         #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
                         print("#############################################")
