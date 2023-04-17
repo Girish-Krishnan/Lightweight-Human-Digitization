@@ -320,7 +320,7 @@ class SynchronousCapture:
         """
 
         data_file = open("test_data.csv", "w")
-        data_file.write("Experiment,Range (single frame), Mean difference (single frame), Range (3 frames) , Mean difference (3 frames), Range (3 frames, original), Mean difference (3 frames, original)\n")
+        data_file.write("Experiment,Range (single frame), Mean difference (single frame), Range (3 frames) , Mean difference (3 frames)\n")
         data_file.close()
 
         data_file = open("test_data.csv", "a")
