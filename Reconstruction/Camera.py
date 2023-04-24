@@ -305,27 +305,31 @@ class SynchronousCapture:
     :param serial_numbers: A list of serial numbers of the RealSense cameras
     """
 
-    def __init__(self, serial_numbers) -> None:
+    def __init__(self, serial_numbers,buffer=False) -> None:
         self.serial_numbers = serial_numbers
         
         self.cameras = [RealSenseCamera(serial_number) for serial_number in serial_numbers]
         
         # Wait for some time to allow camera to stabilize and adjust
         print("Waiting for cameras to stabilize...")
-        self.capture(20,verbose=False)
+        if not buffer:
+            self.capture(50,verbose=False,data_collection=False)
+        else:
+            self.capture_buffer(50,verbose=False,data_collection=False)
+
         print("Stabilization Completed")
 
-    def capture(self,capture_count,verbose=False):
+    def capture(self,capture_count,verbose=False,data_collection=True):
         """
         Capture a single frame from all cameras simultaneously
         """
+        if data_collection:
+            data_file = "./test_data_single_frame.csv"
+            file = open(data_file, "w")
+            file.write("Experiment, Timestamp Range, Timestamp Mean Difference\n")
+            file.close()
 
-        data_file = "./test_data_single_frame.csv"
-        file = open(data_file, "w")
-        file.write("Experiment, Timestamp Range, Timestamp Mean Difference\n")
-        file.close()
-
-        file = open(data_file, "a")
+            file = open(data_file, "a")
 
         for j in range(capture_count):
             while True:
@@ -352,13 +356,14 @@ class SynchronousCapture:
                     timestamps = [result.get_timestamp() for result in results]
 
                     timestamp_range = max(timestamps) - min(timestamps)
-                    mean_difference = np.mean(np.diff(timestamps))
+                    mean_difference = np.mean(np.abs(np.array(timestamps) - timestamps[0]))
 
                     if verbose:
                         print("Timestamp range: ", timestamp_range)
                         print("Mean difference: ", mean_difference)
-
-                    file.write(str(j+1) + ", " + str(timestamp_range) + ", " + str(mean_difference) + "\n")
+                    
+                    if data_collection:
+                        file.write(str(j+1) + ", " + str(timestamp_range) + ", " + str(mean_difference) + "\n")
 
                     if all(results):
                         break
@@ -366,20 +371,20 @@ class SynchronousCapture:
             # Process frames
             [camera.process_frames(result) for camera, result in zip(self.cameras, results)]
 
-        
-        file.close()
+        if data_collection:
+            file.close()
 
-    def capture_buffer(self, capture_count, verbose=False):
+    def capture_buffer(self, capture_count, verbose=False, data_collection=True):
         """
         Capture a buffer of 3 frames from all cameras simultaneously
         """
+        if data_collection:
+            data_file = "./test_data_buffer.csv"
+            file = open(data_file, "w")
+            file.write("Experiment, Timestamp Range, Timestamp Mean Difference\n")
+            file.close()
 
-        data_file = "./test_data_buffer.csv"
-        file = open(data_file, "w")
-        file.write("Experiment, Timestamp Range, Timestamp Mean Difference\n")
-        file.close()
-
-        file = open(data_file, "a")
+            file = open(data_file, "a")
 
         for j in range(capture_count):
             while True:
@@ -438,7 +443,8 @@ class SynchronousCapture:
 
                         timestamps, timestamp_range, mean_diff, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
 
-                        file.write(str(j+1) + ", " + str(timestamp_range) + ", " + str(mean_diff) + "\n")
+                        if data_collection:
+                            file.write(str(j+1) + ", " + str(timestamp_range) + ", " + str(mean_diff) + "\n")
 
                         if verbose:
                             print("#### USING A BUFFER OF 3 FRAMES ####")
@@ -461,9 +467,8 @@ class SynchronousCapture:
                         [camera.process_frames(best_results[i]) for i, camera in enumerate(self.cameras)]
                         break
 
-
-        file.close()
-    
+        if data_collection:
+            file.close() 
     
     def closest_timestamps(self,*timestamps):
 

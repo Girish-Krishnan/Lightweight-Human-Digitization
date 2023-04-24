@@ -5,16 +5,18 @@ import pyrealsense2 as rs
 import os
 import shutil
 
-
 if __name__ == '__main__':
 
     # Initialize list of serial numbers
     SERIAL_NUMBERS = []
 
+    buffer = False
+
     # Create parser object for command line arguments
     parser = argparse.ArgumentParser(description='Capture images')
     parser.add_argument('--hardware_reset', help='reset all camera hardware')
     parser.add_argument('--data_reset', help='delete all capturing data')
+    parser.add_argument('--buffer', help='use a buffer of 3 frames')
     args = parser.parse_args()
 
     # Handle hardware reset option
@@ -34,6 +36,9 @@ if __name__ == '__main__':
 
     # Get RealSense context
     ctx = rs.context()
+
+    if args.buffer:
+        buffer = True
 
     # Check if any devices are connected
     if len(ctx.devices) > 0:
@@ -70,13 +75,14 @@ if __name__ == '__main__':
         exit(-1)
 
     # Perform synchronous capture
-    cam_array = Camera.SynchronousCapture(SERIAL_NUMBERS)
+    cam_array = Camera.SynchronousCapture(SERIAL_NUMBERS,buffer=buffer)
 
-    # Start capturing buffers of 3 frames
-    cam_array.capture_buffer(20)
-
-    # single frame
-    cam_array.capture(20)
+    if buffer:
+        # Start capturing buffers of 3 frames
+        cam_array.capture_buffer(20)
+    else:
+        # single frame
+        cam_array.capture(20)
 
     # Save captured images
     cam_array.save()
