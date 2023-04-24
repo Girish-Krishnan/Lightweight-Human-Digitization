@@ -72,8 +72,12 @@ if __name__ == '__main__':
     # Perform synchronous capture
     cam_array = Camera.SynchronousCapture(SERIAL_NUMBERS)
 
-    # Start capturing
-    cam_array.capture()
+    # Start capturing buffers of 3 frames
+    cam_array.capture_buffer(20)
+
+    # single frame
+    cam_array.capture(20)
+
     # Save captured images
     cam_array.save()
     # Stop capturing

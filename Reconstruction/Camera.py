@@ -312,20 +312,76 @@ class SynchronousCapture:
         
         # Wait for some time to allow camera to stabilize and adjust
         print("Waiting for cameras to stabilize...")
-        time.sleep(5)
+        self.capture(20,verbose=False)
+        print("Stabilization Completed")
 
-    def capture(self):
+    def capture(self,capture_count,verbose=False):
         """
-        Capture frames from all cameras simultaneously
+        Capture a single frame from all cameras simultaneously
         """
 
-        data_file = open("test_data.csv", "w")
-        data_file.write("Experiment,Range (single frame), Mean difference (single frame), Range (3 frames) , Mean difference (3 frames)\n")
-        data_file.close()
+        data_file = "./test_data_single_frame.csv"
+        file = open(data_file, "w")
+        file.write("Experiment, Timestamp Range, Timestamp Mean Difference\n")
+        file.close()
 
-        data_file = open("test_data.csv", "a")
+        file = open(data_file, "a")
 
-        for j in range(20):
+        for j in range(capture_count):
+            while True:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    start = time.time()
+                    futures = [executor.submit(camera.get_frames) for camera in self.cameras]
+                    concurrent.futures.wait(futures)
+                    results = [future.result() for future in futures]
+                    end = time.time()
+                    if verbose:
+                        print("#############################################")
+                        print("Results")
+                        print("#############################################")
+                        print("Time taken to capture frames: " + str(end - start))
+                        # Print out timestamp of each result frame
+                    
+                    for i, result in enumerate(results):
+                        # timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
+                        timestamp = result.get_timestamp()
+                        domain = result.get_frame_timestamp_domain()
+                        if verbose:
+                            print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
+
+                    timestamps = [result.get_timestamp() for result in results]
+
+                    timestamp_range = max(timestamps) - min(timestamps)
+                    mean_difference = np.mean(np.diff(timestamps))
+
+                    if verbose:
+                        print("Timestamp range: ", timestamp_range)
+                        print("Mean difference: ", mean_difference)
+
+                    file.write(str(j+1) + ", " + str(timestamp_range) + ", " + str(mean_difference) + "\n")
+
+                    if all(results):
+                        break
+
+            # Process frames
+            [camera.process_frames(result) for camera, result in zip(self.cameras, results)]
+
+        
+        file.close()
+
+    def capture_buffer(self, capture_count, verbose=False):
+        """
+        Capture a buffer of 3 frames from all cameras simultaneously
+        """
+
+        data_file = "./test_data_buffer.csv"
+        file = open(data_file, "w")
+        file.write("Experiment, Timestamp Range, Timestamp Mean Difference\n")
+        file.close()
+
+        file = open(data_file, "a")
+
+        for j in range(capture_count):
             while True:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     start = time.time()
@@ -347,25 +403,29 @@ class SynchronousCapture:
                         continue
 
                     else:
-                        print("#############################################")
-                        print("Results")
-                        print("#############################################")
+                        if verbose:
+                            print("#############################################")
+                            print("Results")
+                            print("#############################################")
                         # Print out timestamp of each result frame
                         for i, result in enumerate(results_1):
                             # timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
                             timestamp = result.get_timestamp()
                             domain = result.get_frame_timestamp_domain()
-                            print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
+                            if verbose:
+                                print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
 
                         for i, result in enumerate(results_2):
                             timestamp = result.get_timestamp()
                             domain = result.get_frame_timestamp_domain()
-                            print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
+                            if verbose:
+                                print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
 
                         for i, result in enumerate(results_3):
                             timestamp = result.get_timestamp()
                             domain = result.get_frame_timestamp_domain()
-                            print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
+                            if verbose:
+                                print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
                         
                         results = [results_1, results_2, results_3]
                         # Transpose the list of lists, similar to a matrix transpose
@@ -378,29 +438,21 @@ class SynchronousCapture:
 
                         timestamps, timestamp_range, mean_diff, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
 
-                        print("#### USING A SINGLE FRAME ####")
+                        file.write(str(j+1) + ", " + str(timestamp_range) + ", " + str(mean_diff) + "\n")
 
-                        single_range = np.max(timestamps_2) - np.min(timestamps_2)
-                        single_mean_diff = np.mean(np.abs(np.array(timestamps_2) - timestamps_2[0]))
+                        if verbose:
+                            print("#### USING A BUFFER OF 3 FRAMES ####")
 
-                        print("Range of timestamps: ", single_range)
-                        print("Mean difference between timestamps: ", single_mean_diff)
+                            print("Range of timestamps: ", timestamp_range)
+                            print("Mean difference between timestamps: ", mean_diff)
 
-                        print("#### USING A BUFFER OF 3 FRAMES ####")
+                            #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
+                            print("#############################################")
 
-                        print("Range of timestamps: ", timestamp_range)
-                        print("Mean difference between timestamps: ", mean_diff)
-
-                        data_file.write(f"{j+1},{single_range},{single_mean_diff},{timestamp_range},{mean_diff}\n")
-
-                        #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
-                        print("#############################################")
+                            print("Indices of best frames (0, 1, or 2) for each cam")
+                            print(frame_indices)
 
                         best_results = []
-
-                        print("Indices of best frames (0, 1, or 2) for each cam")
-
-                        print(frame_indices)
 
                         for i in range(len(self.cameras)):
                             best_results.append(results[i][frame_indices[i]])
@@ -408,8 +460,10 @@ class SynchronousCapture:
                         # Process frames
                         [camera.process_frames(best_results[i]) for i, camera in enumerate(self.cameras)]
                         break
-        
-        data_file.close()
+
+
+        file.close()
+    
     
     def closest_timestamps(self,*timestamps):
 
