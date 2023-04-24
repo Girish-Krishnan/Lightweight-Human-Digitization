@@ -313,9 +313,9 @@ class SynchronousCapture:
         # Wait for some time to allow camera to stabilize and adjust
         print("Waiting for cameras to stabilize...")
         if not buffer:
-            self.capture(50,verbose=False,data_collection=False)
+            self.capture(300,verbose=False,data_collection=False)
         else:
-            self.capture_buffer(50,verbose=False,data_collection=False)
+            self.capture_buffer(300,verbose=False,data_collection=False)
 
         print("Stabilization Completed")
 
@@ -356,7 +356,7 @@ class SynchronousCapture:
                     timestamps = [result.get_timestamp() for result in results]
 
                     timestamp_range = max(timestamps) - min(timestamps)
-                    mean_difference = np.mean(np.abs(np.array(timestamps) - timestamps[0]))
+                    mean_difference = np.sum(np.abs(np.array(timestamps) - timestamps[0]))/(len(self.cameras)-1)
 
                     if verbose:
                         print("Timestamp range: ", timestamp_range)
