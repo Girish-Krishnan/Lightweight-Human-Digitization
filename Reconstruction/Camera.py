@@ -10,6 +10,7 @@ try:
     import concurrent.futures
     import subprocess
     import itertools
+    import os
     import time
     import matplotlib.pyplot as plt
 except ImportError as e:
@@ -281,7 +282,7 @@ class RealSenseCamera:
         self.color_frame = aligned_frames.get_color_frame()
         self.raw_color_frame = frames.get_color_frame()
 
-    def save_frames(self):
+    def save_frames(self, root_directory="./Camera_Data/", sub_directory="sample_images", numbered=False):
         """
         Save the frames of the RealSenseCamera object as .jpg and .npy files
         """
@@ -293,10 +294,19 @@ class RealSenseCamera:
         depth_colormap = cv.applyColorMap(cv.convertScaleAbs(depth_image, alpha=0.03), cv.COLORMAP_JET)
 
         # Save color as .jpg and depth as .npy
-        cv.imwrite("./Camera_Data/" + self.serial_number + "/sample_images/image.jpg", color_image)
-        cv.imwrite("./Camera_Data/" + self.serial_number + "/sample_images/raw_image.jpg", raw_color_image)
-        np.save("./Camera_Data/" + self.serial_number + "/sample_images/depth_map.npy", depth_image)
-        cv.imwrite("./Camera_Data/" + self.serial_number + "/sample_images/depth.png", depth_colormap)
+        if not numbered:
+            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/image.jpg", color_image)
+            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "raw_image.jpg", raw_color_image)
+            np.save(root_directory + self.serial_number + "/" + sub_directory + "/depth_map.npy", depth_image)
+            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/depth.png", depth_colormap)
+
+        else:
+            # Find the number of files in the directory
+            num_files = len([f for f in os.listdir(root_directory + self.serial_number + "/" + sub_directory) if os.path.isfile(os.path.join(root_directory + self.serial_number + "/" + sub_directory, f))])
+            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/image_" + str(num_files//4) + ".jpg", color_image)
+            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/raw_image_" + str(num_files//4) + ".jpg", raw_color_image)
+            np.save(root_directory + self.serial_number + "/" + sub_directory + "/depth_map_" + str(num_files//4) + ".npy", depth_image)
+            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/depth_" + str(num_files//4) + ".png", depth_colormap)
 
 
 class SynchronousCapture:
@@ -313,16 +323,19 @@ class SynchronousCapture:
         # Wait for some time to allow camera to stabilize and adjust
         print("Waiting for cameras to stabilize...")
         if not buffer:
-            self.capture(300,verbose=False,data_collection=False)
+            self.capture(1000,verbose=False,data_collection=False)
         else:
-            self.capture_buffer(300,verbose=False,data_collection=False)
+            self.capture_buffer(1000,verbose=False,data_collection=False)
 
         print("Stabilization Completed")
 
-    def capture(self,capture_count,verbose=False,data_collection=True):
+    def capture(self,capture_count,verbose=False,data_collection=True, save_captures=False, motion=False):
         """
         Capture a single frame from all cameras simultaneously
         """
+
+        file_directory = "slow_movement" if motion else "static"
+
         if data_collection:
             data_file = "./test_data_single_frame.csv"
             file = open(data_file, "w")
@@ -366,6 +379,8 @@ class SynchronousCapture:
                         file.write(str(j+1) + ", " + str(timestamp_range) + ", " + str(mean_difference) + "\n")
 
                     if all(results):
+                        if save_captures:
+                            [camera.save_frames(root_directory="./Capture_Data/" + file_directory + "/",sub_directory="",numbered=True) for camera in self.cameras]
                         break
 
             # Process frames

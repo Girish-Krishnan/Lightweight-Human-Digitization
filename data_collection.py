@@ -1,20 +1,24 @@
+# Import required modules
 import argparse
-import subprocess
-import multiprocessing
 from Reconstruction import Camera
 import pyrealsense2 as rs
 import os
 import shutil
 
-
 if __name__ == '__main__':
+
     # Initialize list of serial numbers
     SERIAL_NUMBERS = []
+
+    buffer = False
+    motion = False
 
     # Create parser object for command line arguments
     parser = argparse.ArgumentParser(description='Capture images')
     parser.add_argument('--hardware_reset', help='reset all camera hardware')
     parser.add_argument('--data_reset', help='delete all capturing data')
+    parser.add_argument('--buffer', help='use a buffer of 3 frames')
+    parser.add_argument('--motion', help='whether or not the data have motion')
     args = parser.parse_args()
 
     # Handle hardware reset option
@@ -34,6 +38,9 @@ if __name__ == '__main__':
 
     # Get RealSense context
     ctx = rs.context()
+
+    if args.buffer:
+        buffer = True
 
     # Check if any devices are connected
     if len(ctx.devices) > 0:
@@ -70,15 +77,14 @@ if __name__ == '__main__':
         exit(-1)
 
     # Perform synchronous capture
-    # Use subprocess to run subprocess_camera.py with the serial number as an argument
-    
-    pool = multiprocessing.Pool(processes=len(SERIAL_NUMBERS))
-    results = []
-    for serial_number in SERIAL_NUMBERS:
-        result = pool.apply_async(subprocess.run, args=(['python', 'subprocess_camera.py', '--serial_number', serial_number],))
-        results.append(result)
+    cam_array = Camera.SynchronousCapture(SERIAL_NUMBERS,buffer=buffer)
 
-    for result in results:
-        result.wait()
-    
-    pool.close()
+    if buffer:
+        # Start capturing buffers of 3 frames
+        cam_array.capture_buffer(20)
+    else:
+        # single frame
+        cam_array.capture(100,data_collection=False, save_captures=True, motion=args.motion)
+
+    # Stop capturing
+    cam_array.stop()
