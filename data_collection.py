@@ -84,7 +84,7 @@ if __name__ == '__main__':
         cam_array.capture_buffer(20)
     else:
         # single frame
-        cam_array.capture(100,data_collection=False, save_captures=True, motion=args.motion)
+        cam_array.capture(50,data_collection=False, save_captures=True, motion=args.motion)
 
     # Stop capturing
     cam_array.stop()

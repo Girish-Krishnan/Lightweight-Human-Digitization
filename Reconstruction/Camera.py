@@ -380,7 +380,7 @@ class SynchronousCapture:
 
                     if all(results):
                         if save_captures:
-                            [camera.save_frames(root_directory="./Capture_Data/" + file_directory + "/",sub_directory="",numbered=True) for camera in self.cameras]
+                            [camera.save_frames(root_directory="C:/Users/Girish/Desktop/Capture_Data/" + file_directory + "/",sub_directory="",numbered=True) for camera in self.cameras]
                         break
 
             # Process frames
