@@ -197,10 +197,10 @@ for pair in image_pairs:
                     img_2 = aruco.drawDetectedMarkers(img_2, corners_2, borderColor=(0, 0, 255))
 
                     # # Draw and display the corners
-                    # images_display = np.hstack((img_1, img_2))
-                    # cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
-                    # cv2.imshow('RealSense', images_display)
-                    # cv2.waitKey(0)
+                    images_display = np.hstack((img_1, img_2))
+                    cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
+                    cv2.imshow('RealSense', images_display)
+                    cv2.waitKey(0)
 
     cv2.destroyAllWindows()
     print("common_img_count: ", common_img_count)
