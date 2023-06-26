@@ -16,6 +16,7 @@ from scipy.optimize import least_squares
 import traceback
 import argparse
 import matplotlib.pyplot as plt
+from trajectory_utils.trajectory_io import *
 
 parser = argparse.ArgumentParser(description='Stereo calibration')
 parser.add_argument('--bundle_adjust',help='implement bundle adjustment')
@@ -197,10 +198,10 @@ for pair in image_pairs:
                     img_2 = aruco.drawDetectedMarkers(img_2, corners_2, borderColor=(0, 0, 255))
 
                     # # Draw and display the corners
-                    images_display = np.hstack((img_1, img_2))
-                    cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
-                    cv2.imshow('RealSense', images_display)
-                    cv2.waitKey(0)
+                    #images_display = np.hstack((img_1, img_2))
+                    #cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
+                    #cv2.imshow('RealSense', images_display)
+                    #cv2.waitKey(0)
 
     cv2.destroyAllWindows()
     print("common_img_count: ", common_img_count)
@@ -275,3 +276,6 @@ for pair in image_pairs:
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = r_mat.tolist()
 
     json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent=4)
+
+    write_to_file('odometry.log', 0, np.eye(3), [0, 0, 0])
+    write_to_file('odometry.log', 1, r_mat, t)
