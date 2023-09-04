@@ -6,13 +6,25 @@ import numpy as np
 import json
 import cv2 as cv
 import open3d as o3d
-import sys 
+import sys
+import argparse
+
+RECONST_IMAGES_DIR = '/reconstruction_images'
+CALIB_IMAGES_DIR = '/calibration_images'
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--config_file', type=str, default='./configuration_parameters.json')
+parser.add_argument('--output_file', type=str, default='./point_cloud_combined.ply')
+parser.add_argument('--data_dir', type=str, default='./Capture_Data')
+parser.add_argument('--save_individual', action='store_true')
+parser.add_argument('--visualize', action='store_true')
+args = parser.parse_args()
 
 """
 GET CALIBRATION DATA
 """
 
-SETTINGS_PATH = './configuration_parameters.json'
+SETTINGS_PATH = args.config_file
 param = json.load(open(SETTINGS_PATH))
 cams_list = list(param["cams"].keys())
 print("cams_list: ", cams_list)
@@ -101,49 +113,15 @@ for i in range(len(cams_list)):
                                  CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation))
 
 for i in range(len(cams_list)):
-    cam[i].add_image(cv.imread("./Camera_Data/" + cams_list[i] + "/sample_images/image.jpg"),
-                     np.load("./Camera_Data/" + cams_list[i] + "/sample_images/depth_map.npy") * 0.001)
+    cam[i].add_image(cv.imread(args.data_dir + "/" + cams_list[i] + RECONST_IMAGES_DIR + "/image.jpg"),
+                     np.load(args.data_dir + "/" + cams_list[i] + RECONST_IMAGES_DIR + "/depth_map.npy") * 0.001)
     cam[i].point_cloud()
-    o3d.io.write_point_cloud("./Camera_Data/" + cams_list[i] + '/individual_pcd' + ".ply", cam[i].pcd_o3d)
-    cam[i].visualize()
+    if args.save_individual:
+        o3d.io.write_point_cloud(args.data_dir + "/" + cams_list[i] + '/individual_pcd' + ".ply", cam[i].pcd_o3d)
 
 combiner = Camera.Combiner(cam)
 combiner.combine()
-o3d.io.write_point_cloud("./point_cloud_combined.ply", combiner.pcd_o3d)
+o3d.io.write_point_cloud(args.output_file, combiner.pcd_o3d)
 
-combiner.visualize()
-
-
-
-# def draw_registration_result(source, target, transformation):
-#     source_temp = copy.deepcopy(source)
-#     target_temp = copy.deepcopy(target)
-#     source_temp.paint_uniform_color([1, 0.706, 0])
-#     target_temp.paint_uniform_color([0, 0.651, 0.929])
-#     source_temp.transform(transformation)
-#     o3d.visualization.draw_geometries([source_temp, target_temp],
-#                                       zoom=0.4459,
-#                                       front=[0.9288, -0.2951, -0.2242],
-#                                       lookat=[1.6784, 2.0612, 1.4451],
-#                                       up=[-0.3402, -0.9189, -0.1996])
-
-# source = cam[1].pcd_o3d
-# target = cam[0].pcd_o3d
-# threshold = 0.02
-# trans_init = np.asarray([[0.40434763, -0.43655812,  0.80369148, -1.58587888],
-#                          [0.20280486,  0.89965147,  0.38664898, -0.56572138 ],
-#                          [-0.89183697,  0.00665194,  0.45230805, 0.21524522], [0.0, 0.0, 0.0, 1.0]])
-# draw_registration_result(source, target, trans_init)
-# print("Initial alignment")
-# evaluation = o3d.pipelines.registration.evaluate_registration(
-#     source, target, threshold, trans_init)
-# print(evaluation)
-
-# print("Apply point-to-point ICP")
-# reg_p2p = o3d.pipelines.registration.registration_icp(
-#     source, target, threshold, trans_init,
-#     o3d.pipelines.registration.TransformationEstimationPointToPoint())
-# print(reg_p2p)
-# print("Transformation is:")
-# print(reg_p2p.transformation)
-# draw_registration_result(source, target, reg_p2p.transformation)
+if args.visualize:
+    combiner.visualize()

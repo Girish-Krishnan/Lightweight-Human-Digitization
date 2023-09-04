@@ -8,13 +8,14 @@ try:
     import copy
     import pyrealsense2 as rs
     import concurrent.futures
-    import subprocess
-    import itertools
+    from tqdm import tqdm
     import os
     import time
     import matplotlib.pyplot as plt
 except ImportError as e:
+    print("Warning: Unable to import one or more modules due to the following error: ", e)
     pass
+
 
 """
 Classes for 3D reconstruction
@@ -74,8 +75,6 @@ class Camera:
 
         mask[grad > 0.05] = True
 
-        erode_mask = cv.dilate(mask.astype(np.uint8), np.ones((7,7), dtype=np.uint8))
-
         self.depth_map[mask] = 0
 
         self.pcd = np.hstack(
@@ -96,7 +95,6 @@ class Camera:
 
         self.pcd = np.asarray(self.pcd_o3d.points)
         self.colors = np.asarray(self.pcd_o3d.colors)
-
 
 
     def translate_point_cloud(self,vector):
@@ -145,7 +143,6 @@ class Combiner:
             self.cam_array[i].translate_point_cloud(self.cam_array[i].translation)
 
         self.pcd = np.concatenate(tuple([i.pcd for i in self.cam_array]),axis=0)
-        #self.pcd = np.matmul(rotate,self.pcd.T).T
         self.rotate_point_cloud(np.array([[1,0,0],[0,-1,0],[0,0,-1]]))
 
         self.colors = np.concatenate(tuple([i.colors for i in self.cam_array]),axis=0)
@@ -232,15 +229,15 @@ class RealSenseCamera:
     
     """
 
-    def __init__(self, serial_number) -> None:
+    def __init__(self, serial_number,width,height,fps) -> None:
         # Create RealSense D415 camera object and pipeline
         self.serial_number = serial_number
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         self.config.enable_device(serial_number)
-        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 60)
-        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 60)
-        self.config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 60)
+        self.config.enable_stream(rs.stream.depth, width, height, rs.format.z16, fps)
+        self.config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, fps)
+        self.config.enable_stream(rs.stream.infrared, width, height, rs.format.y8, fps)
 
         # Start streaming
         self.pipeline.start(self.config)
@@ -249,11 +246,9 @@ class RealSenseCamera:
         self.profile = self.pipeline.get_active_profile()
         self.depth_sensor = self.profile.get_device().first_depth_sensor()
         self.depth_sensor.set_option(rs.option.emitter_enabled, 1)
-        #self.depth_sensor.set_option(rs.option.enable_auto_exposure, 1)
-        #self.depth_sensor.set_option(rs.option.enable_auto_white_balance, 1)
-        #self.depth_sensor.set_option(rs.option.output_trigger_enabled, 1)
-        self.depth_sensor.set_option(rs.option.laser_power, 360)
+        self.depth_sensor.set_option(rs.option.laser_power, 360) # 360 is max laser power
         self.depth_sensor.set_option(rs.option.global_time_enabled, 1)
+
         # enable sync between multiple cameras
         self.depth_sensor.set_option(rs.option.inter_cam_sync_mode, 1)
 
@@ -272,7 +267,7 @@ class RealSenseCamera:
         aligned_frames = rs.align(rs.stream.depth).process(frames)
 
         # Get aligned frames
-        self.aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
+        self.aligned_depth_frame = aligned_frames.get_depth_frame()
         self.aligned_depth_frame = rs.decimation_filter(1).process(self.aligned_depth_frame)
         self.aligned_depth_frame = rs.disparity_transform(True).process(self.aligned_depth_frame)
         self.aligned_depth_frame = rs.spatial_filter().process(self.aligned_depth_frame)
@@ -282,7 +277,7 @@ class RealSenseCamera:
         self.color_frame = aligned_frames.get_color_frame()
         self.raw_color_frame = frames.get_color_frame()
 
-    def save_frames(self, root_directory="./Camera_Data/", sub_directory="sample_images", numbered=False):
+    def save_frames(self, root_directory, sub_directory, numbered=False):
         """
         Save the frames of the RealSenseCamera object as .jpg and .npy files
         """
@@ -290,13 +285,12 @@ class RealSenseCamera:
         depth_image = np.asanyarray(self.aligned_depth_frame.get_data())
         color_image = np.asanyarray(self.color_frame.get_data())
         raw_color_image = np.asanyarray(self.raw_color_frame.get_data())
-        # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
         depth_colormap = cv.applyColorMap(cv.convertScaleAbs(depth_image, alpha=0.03), cv.COLORMAP_JET)
 
         # Save color as .jpg and depth as .npy
         if not numbered:
             cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/image.jpg", color_image)
-            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "raw_image.jpg", raw_color_image)
+            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/raw_image.jpg", raw_color_image)
             np.save(root_directory + self.serial_number + "/" + sub_directory + "/depth_map.npy", depth_image)
             cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/depth.png", depth_colormap)
 
@@ -313,38 +307,34 @@ class SynchronousCapture:
     """
     Initialize a SynchronousCapture object with the following attributes:
     :param serial_numbers: A list of serial numbers of the RealSense cameras
+    :param width: The width of the image
+    :param height: The height of the image
+    :param fps: The frames per second of the image
+    :param warmup_time: The time to wait for the cameras to stabilize, in seconds (default 120)
     """
 
-    def __init__(self, serial_numbers,buffer=False) -> None:
+    def __init__(self, serial_numbers,width,height,fps,output_dir,sub_dir,warmup_time=120,numbered=False) -> None:
         self.serial_numbers = serial_numbers
         
-        self.cameras = [RealSenseCamera(serial_number) for serial_number in serial_numbers]
+        self.cameras = [RealSenseCamera(serial_number,width,height,fps) for serial_number in serial_numbers]
+        self.output_dir = output_dir
+        self.sub_dir = sub_dir
+        self.numbered = numbered
         
+        print("[RealSense] Warming up cameras and stabilizing streams. This will take a little more than" + str(warmup_time) + " seconds")
+
         # Wait for some time to allow camera to stabilize and adjust
-        print("Waiting for cameras to stabilize...")
-        if not buffer:
-            self.capture(1000,verbose=False,data_collection=False)
-        else:
-            self.capture_buffer(1000,verbose=False,data_collection=False)
+        self.capture(int(warmup_time*fps),verbose=False,save_captures=False)
 
-        print("Stabilization Completed")
+        print("[RealSense] Stabilization Completed")
 
-    def capture(self,capture_count,verbose=False,data_collection=True, save_captures=False, motion=False):
+    def capture(self,capture_count,verbose=False,save_captures=False):
         """
         Capture a single frame from all cameras simultaneously
         """
 
-        file_directory = "slow_movement" if motion else "static"
-
-        if data_collection:
-            data_file = "./test_data_single_frame.csv"
-            file = open(data_file, "w")
-            file.write("Experiment, Timestamp Range, Timestamp Mean Difference\n")
-            file.close()
-
-            file = open(data_file, "a")
-
-        for j in range(capture_count):
+        for j in tqdm(range(capture_count)):
+            tqdm.write("Capturing frame " + str(j+1) + " of " + str(capture_count))
             while True:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     start = time.time()
@@ -353,188 +343,21 @@ class SynchronousCapture:
                     results = [future.result() for future in futures]
                     end = time.time()
                     if verbose:
-                        print("#############################################")
-                        print("Results")
-                        print("#############################################")
                         print("Time taken to capture frames: " + str(end - start))
-                        # Print out timestamp of each result frame
-                    
-                    for i, result in enumerate(results):
-                        # timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
-                        timestamp = result.get_timestamp()
-                        domain = result.get_frame_timestamp_domain()
-                        if verbose:
-                            print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
-
-                    timestamps = [result.get_timestamp() for result in results]
-
-                    timestamp_range = max(timestamps) - min(timestamps)
-                    mean_difference = np.sum(np.abs(np.array(timestamps) - timestamps[0]))/(len(self.cameras)-1)
-
-                    if verbose:
-                        print("Timestamp range: ", timestamp_range)
-                        print("Mean difference: ", mean_difference)
-                    
-                    if data_collection:
-                        file.write(str(j+1) + ", " + str(timestamp_range) + ", " + str(mean_difference) + "\n")
 
                     if all(results):
                         if save_captures:
-                            [camera.save_frames(root_directory="C:/Users/Girish/Desktop/Capture_Data/" + file_directory + "/",sub_directory="",numbered=True) for camera in self.cameras]
+                            self.save()
                         break
 
             # Process frames
             [camera.process_frames(result) for camera, result in zip(self.cameras, results)]
 
-        if data_collection:
-            file.close()
-
-    def capture_buffer(self, capture_count, verbose=False, data_collection=True):
-        """
-        Capture a buffer of 3 frames from all cameras simultaneously
-        """
-        if data_collection:
-            data_file = "./test_data_buffer.csv"
-            file = open(data_file, "w")
-            file.write("Experiment, Timestamp Range, Timestamp Mean Difference\n")
-            file.close()
-
-            file = open(data_file, "a")
-
-        for j in range(capture_count):
-            while True:
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    start = time.time()
-                    futures_1 = [executor.submit(camera.get_frames) for camera in self.cameras]
-                    concurrent.futures.wait(futures_1)
-                    results_1 = [future.result() for future in futures_1]
-
-                    futures_2 = [executor.submit(camera.get_frames) for camera in self.cameras]
-                    concurrent.futures.wait(futures_2)
-                    results_2 = [future.result() for future in futures_2]
-
-                    futures_3 = [executor.submit(camera.get_frames) for camera in self.cameras]
-                    concurrent.futures.wait(futures_3)
-                    results_3 = [future.result() for future in futures_3]
-
-                    end = time.time()
-
-                    if not all(results_1) or not all(results_2) or not all(results_3):
-                        continue
-
-                    else:
-                        if verbose:
-                            print("#############################################")
-                            print("Results")
-                            print("#############################################")
-                        # Print out timestamp of each result frame
-                        for i, result in enumerate(results_1):
-                            # timestamp = result.get_frame_metadata(rs.frame_metadata_value.time_of_arrival)
-                            timestamp = result.get_timestamp()
-                            domain = result.get_frame_timestamp_domain()
-                            if verbose:
-                                print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
-
-                        for i, result in enumerate(results_2):
-                            timestamp = result.get_timestamp()
-                            domain = result.get_frame_timestamp_domain()
-                            if verbose:
-                                print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
-
-                        for i, result in enumerate(results_3):
-                            timestamp = result.get_timestamp()
-                            domain = result.get_frame_timestamp_domain()
-                            if verbose:
-                                print("Camera ", self.serial_numbers[i], " timestamp: ", timestamp, "domain: ", domain)
-                        
-                        results = [results_1, results_2, results_3]
-                        # Transpose the list of lists, similar to a matrix transpose
-                        results = list(map(list, zip(*results)))
-
-                        # Find standard deviation of timestamps
-                        timestamps_1 = [result.get_timestamp() for result in results_1]
-                        timestamps_2 = [result.get_timestamp() for result in results_2]
-                        timestamps_3 = [result.get_timestamp() for result in results_3]
-
-                        timestamps, timestamp_range, mean_diff, frame_indices = self.closest_timestamps(timestamps_1, timestamps_2, timestamps_3)
-
-                        if data_collection:
-                            file.write(str(j+1) + ", " + str(timestamp_range) + ", " + str(mean_diff) + "\n")
-
-                        if verbose:
-                            print("#### USING A BUFFER OF 3 FRAMES ####")
-
-                            print("Range of timestamps: ", timestamp_range)
-                            print("Mean difference between timestamps: ", mean_diff)
-
-                            #print("Time taken to capture frames from all cameras: ", "{:.21f}".format(end - start))
-                            print("#############################################")
-
-                            print("Indices of best frames (0, 1, or 2) for each cam")
-                            print(frame_indices)
-
-                        best_results = []
-
-                        for i in range(len(self.cameras)):
-                            best_results.append(results[i][frame_indices[i]])
-
-                        # Process frames
-                        [camera.process_frames(best_results[i]) for i, camera in enumerate(self.cameras)]
-                        break
-
-        if data_collection:
-            file.close() 
-    
-    def closest_timestamps(self,*timestamps):
-
-        timestamps = np.array(timestamps)
-        timestamps = np.transpose(timestamps)
-
-        center_frame_idx = timestamps.shape[1] // 2
-        reference_timestamp = timestamps[0][center_frame_idx]
-
-        frame_indices = []
-
-        for i in range(timestamps.shape[0]):
-            frame_indices.append(np.argmin(np.abs(timestamps[i] - reference_timestamp)))
-        
-        chosen = timestamps[:,frame_indices]
-        timestamp_range = np.max(chosen) - np.min(chosen)
-
-        # Find mean difference between timestamps
-        mean_diff = np.mean(np.abs(chosen - reference_timestamp))
-
-        return timestamps, timestamp_range, mean_diff, frame_indices
-
-    def closest_timestamps_brute_force(self, *lists):
-        """
-        Given a list of lists (all lists the same length)
-        choose one number from each list such that range of chosen numbers is minimized
-        You can for example choose the first element from list 1, the third element from list 2, etc.
-        The function returns the chosen numbers and the range of the chosen numbers
-        """
-        # Create a list of lists of all possible combinations
-        all_combinations = list(itertools.product(*lists))
-        # Find the combination with the smallest range
-        min_range = min([max(combination) - min(combination) for combination in all_combinations])
-        # Find the index of the combination with the smallest range
-        min_range_index = [max(combination) - min(combination) for combination in all_combinations].index(min_range)
-
-        # Find the indices of the combination from each list
-        indices = [list.index(combination) for list, combination in zip(lists, all_combinations[min_range_index])]
-
-        chosen = all_combinations[min_range_index]
-        # Find mean difference between timestamps
-        mean_diff = np.mean(np.abs(np.array(chosen) - chosen[0]))
-        
-        # Return the combination with the smallest range, the range value, and the indices of the combination from each list
-        return chosen, min_range, mean_diff, indices
-
     def save(self):
         """
         Save frames from all cameras simultaneously
         """
-        [camera.save_frames() for camera in self.cameras]
+        [camera.save_frames(root_directory=self.output_dir,sub_directory=self.sub_dir,numbered=self.numbered) for camera in self.cameras]
 
     def stop(self):
         """

@@ -3,8 +3,6 @@ FINDS THE CORRESPONDING CAMERA PARAMETERS FOR ANY ARBITRARY NUMBER OF CONNECTED 
 
 """
 
-# IMPORTS
-
 import cv2
 import numpy as np
 import glob
@@ -18,16 +16,30 @@ import argparse
 import matplotlib.pyplot as plt
 from trajectory_utils.trajectory_io import *
 
+
+RECONST_IMAGES_DIR = '/reconstruction_images'
+CALIB_IMAGES_DIR = '/calibration_images'
+
 parser = argparse.ArgumentParser(description='Stereo calibration')
 parser.add_argument('--bundle_adjust',help='implement bundle adjustment')
+parser.add_argument('--config_file', type=str, default='./configuration_parameters.json')
+parser.add_argument('--charuco_rows', type=int, default=9)
+parser.add_argument('--charuco_cols', type=int, default=12)
+parser.add_argument('--square_length', type=float, default=0.060)
+parser.add_argument('--marker_length', type=float, default=0.044)
+parser.add_argument('--data_dir', type=str, default='./Capture_Data')
+parser.add_argument('--display_detected_markers', action='store_true')
+parser.add_argument('-w', '--image_width', type=int, default=640)
+parser.add_argument('-h', '--image_height', type=int, default=480)
+parser.add_argument('--odom_file', type=str, default='./odometry.log')
 
 args = parser.parse_args()
 
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
 ARUCO_DICT = aruco.Dictionary_get(aruco.DICT_5X5_250)
-CHARUCOBOARD_ROWCOUNT = 9
-CHARUCOBOARD_COLCOUNT = 12
+CHARUCOBOARD_ROWCOUNT = args.charuco_rows
+CHARUCOBOARD_COLCOUNT = args.charuco_cols
 
 distCoeffs = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
 
@@ -35,14 +47,14 @@ distCoeffs = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
 CHARUCO_BOARD = aruco.CharucoBoard_create(
     squaresX=CHARUCOBOARD_COLCOUNT,
     squaresY=CHARUCOBOARD_ROWCOUNT,
-    squareLength=0.060,
-    markerLength=0.044,
+    squareLength=args.square_length,
+    markerLength=args.marker_length,
     dictionary=ARUCO_DICT)
 
 
 # LOAD INITIAL CONFIG PARAMS, which are then modified in the program
 
-with(open("./configuration_parameters.json")) as f:
+with(open(args.config_file)) as f:
     configuration_parameters = json.load(f)
     f.close()
 
@@ -76,17 +88,6 @@ def compute_distance(op, left_mtx, left_dist, left_pts,
     right_p = R.T.dot(right_p - T)
     return (np.abs(left_p - right_p) * 1000).ravel()  
 
-def get_intrinsics(vals):
-    # just optimise f
-    f = vals[0]
-    m = np.eye(3)
-    m[0, 0] = f
-    m[1, 1] = f
-    m[0, 2] = 360
-    m[1, 2] = 640
-    d = np.array([vals[1], vals[2], 0, 0, vals[3]])
-    return m, d
-
 def fun(parameters, obj_pts, left_pts, right_pts, left_mtx, left_dist, right_mtx, right_dist):
     """
     Compute residuals:
@@ -109,7 +110,7 @@ if NUM_CAMS == 0:
 # Extracting path of individual image stored in a given directory
 images = []
 for i in range(NUM_CAMS):
-    images.append(glob.glob("./Camera_Data/" + serial_numbers[i] + "/calibration_images" + "/*" + IMAGE_TYPE))
+    images.append(glob.glob(args.data_dir + "/" + serial_numbers[i] + CALIB_IMAGES_DIR + "/*" + IMAGE_TYPE))
 
 image_pairs = combinations(range(NUM_CAMS), 2)  # finding all distinct pairs of cameras
 
@@ -193,15 +194,16 @@ for pair in image_pairs:
                     imgpoints_1.append(charuco_corners_1)
                     imgpoints_2.append(charuco_corners_2)
 
-                    # Outline all of the markers detected in our image
-                    img_1 = aruco.drawDetectedMarkers(img_1, corners_1, borderColor=(0, 0, 255))
-                    img_2 = aruco.drawDetectedMarkers(img_2, corners_2, borderColor=(0, 0, 255))
+                    if args.display_detected_markers:
+                        # Outline all of the markers detected in our image
+                        img_1 = aruco.drawDetectedMarkers(img_1, corners_1, borderColor=(0, 0, 255))
+                        img_2 = aruco.drawDetectedMarkers(img_2, corners_2, borderColor=(0, 0, 255))
 
-                    # # Draw and display the corners
-                    #images_display = np.hstack((img_1, img_2))
-                    #cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
-                    #cv2.imshow('RealSense', images_display)
-                    #cv2.waitKey(0)
+                        # # Draw and display the corners
+                        images_display = np.hstack((img_1, img_2))
+                        cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
+                        cv2.imshow('RealSense', images_display)
+                        cv2.waitKey(0)
 
     cv2.destroyAllWindows()
     print("common_img_count: ", common_img_count)
@@ -213,7 +215,7 @@ for pair in image_pairs:
     if common_img_count >= THRESHOLD:
         try:
             rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs,
-                                                            cam2_mtx, distCoeffs, [640, 480], criteria_stereo, flags)
+                                                            cam2_mtx, distCoeffs, [args.image_width, args.image_height], criteria_stereo, flags)
 
             
             if args.bundle_adjust:
@@ -260,9 +262,6 @@ for pair in image_pairs:
     # gives the position of the 2nd cam w.r.t the 1st cam frame    
 
     r_mat = inv_trans[0:3, 0:3]
-    # r = Rotation.from_matrix(r_mat)
-    # angle = r.as_euler('xyz', degrees=True)
-    # print('angle: ', angle)
     t = inv_trans[0:3, 3]
     print('translation: ', t)
 
@@ -275,7 +274,7 @@ for pair in image_pairs:
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["translation"] = t.tolist()
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = r_mat.tolist()
 
-    json.dump(configuration_parameters, open("configuration_parameters.json", "w"), indent=4)
+    json.dump(configuration_parameters, open(args.config_file, "w"), indent=4)
 
-    write_to_file('odometry.log', 0, np.eye(3), [0, 0, 0])
-    write_to_file('odometry.log', 1, r_mat, t)
+    write_to_file(args.odom_file, 0, np.eye(3), [0, 0, 0])
+    write_to_file(args.odom_file, 1, r_mat, t)
