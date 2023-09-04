@@ -22,6 +22,8 @@ parser.add_argument('--config_file', type=str, default='./configuration_paramete
 parser.add_argument('--fps', type=int, default=30, help='FPS of captured images')
 parser.add_argument('--exposure', type=int, default=70000, help='Exposure of captured images')
 parser.add_argument('--gain', type=int, default=30, help='Gain of captured images')
+parser.add_argument('--width', type=int, default=640,help='Width of captured images')
+parser.add_argument('--height', type=int, default=480,help='Height of captured images')
 
 args = parser.parse_args()
 
@@ -129,8 +131,8 @@ if len(ctx.devices) > 0:
         pipelines.append(rs.pipeline())
         configs.append(rs.config())
         configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-        configs[device_num].enable_stream(rs.stream.color, configuration_parameters['cams'][serial_numbers[device_num]]['intrinsics']['img_size'][0], configuration_parameters['cams'][serial_numbers[device_num]]['intrinsics']['img_size'][1], rs.format.bgr8, args.fps)
-        configs[device_num].enable_stream(rs.stream.infrared, configuration_parameters['cams'][serial_numbers[device_num]]['intrinsics']['img_size'][0], configuration_parameters['cams'][serial_numbers[device_num]]['intrinsics']['img_size'][1], rs.format.y8, args.fps)
+        configs[device_num].enable_stream(rs.stream.color, args.width, args.height, rs.format.bgr8, args.fps)
+        configs[device_num].enable_stream(rs.stream.infrared, args.width, args.height, rs.format.y8, args.fps)
         pipelines[device_num].start(configs[device_num])
 
         profile = pipelines[device_num].get_active_profile()
@@ -143,7 +145,7 @@ if len(ctx.devices) > 0:
         s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
         serial_numbers.append(s_num)
         configuration_parameters["cams"][s_num]["intrinsics"] = {}
-        configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = [color_intrinsics.width, color_intrinsics.height]
+        configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = [args.width, args.height]
         configuration_parameters["cams"][s_num]["intrinsics"]["focal_length"] = [color_intrinsics.fx,
                                                                                        color_intrinsics.fy]
         configuration_parameters["cams"][s_num]["intrinsics"]["img_center"] = [color_intrinsics.ppx,

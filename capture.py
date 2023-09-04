@@ -15,7 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_reset', action='store_true', help='Delete all captured data')
     parser.add_argument('--output_dir', type=str, default='./Capture_Data', help='Output directory for captured data')
     parser.add_argument('-w', '--width', type=int, default=640, help='Width of captured images')
-    parser.add_argument('-h', '--height', type=int, default=480, help='Height of captured images')
+    parser.add_argument('-ht', '--height', type=int, default=480, help='Height of captured images')
     parser.add_argument('-f', '--fps', type=int, default=60, help='FPS of captured images')
     parser.add_argument('--warmup-time', type=int, default=120, help='Time to wait before capturing images (in seconds)')
     parser.add_argument('-n', '--num-captures', type=int, default=20, help='Number of images to capture')
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     numbered = False
     if args.num_captures > 1:
         numbered = True
-
+ 
     # Handle hardware reset option - resets all connected cameras
     # Use this option if the cameras are not responding
     if args.hardware_reset:

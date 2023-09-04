@@ -289,18 +289,18 @@ class RealSenseCamera:
 
         # Save color as .jpg and depth as .npy
         if not numbered:
-            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/image.jpg", color_image)
-            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/raw_image.jpg", raw_color_image)
-            np.save(root_directory + self.serial_number + "/" + sub_directory + "/depth_map.npy", depth_image)
-            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/depth.png", depth_colormap)
+            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/image.jpg", color_image)
+            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/raw_image.jpg", raw_color_image)
+            np.save(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth_map.npy", depth_image)
+            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth.png", depth_colormap)
 
         else:
             # Find the number of files in the directory
             num_files = len([f for f in os.listdir(root_directory + self.serial_number + "/" + sub_directory) if os.path.isfile(os.path.join(root_directory + self.serial_number + "/" + sub_directory, f))])
-            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/image_" + str(num_files//4) + ".jpg", color_image)
-            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/raw_image_" + str(num_files//4) + ".jpg", raw_color_image)
-            np.save(root_directory + self.serial_number + "/" + sub_directory + "/depth_map_" + str(num_files//4) + ".npy", depth_image)
-            cv.imwrite(root_directory + self.serial_number + "/" + sub_directory + "/depth_" + str(num_files//4) + ".png", depth_colormap)
+            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/image_" + str(num_files//4) + ".jpg", color_image)
+            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/raw_image_" + str(num_files//4) + ".jpg", raw_color_image)
+            np.save(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth_map_" + str(num_files//4) + ".npy", depth_image)
+            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth_" + str(num_files//4) + ".png", depth_colormap)
 
 
 class SynchronousCapture:
@@ -321,7 +321,7 @@ class SynchronousCapture:
         self.sub_dir = sub_dir
         self.numbered = numbered
         
-        print("[RealSense] Warming up cameras and stabilizing streams. This will take a little more than" + str(warmup_time) + " seconds")
+        print("[RealSense] Warming up cameras and stabilizing streams")
 
         # Wait for some time to allow camera to stabilize and adjust
         self.capture(int(warmup_time*fps),verbose=False,save_captures=False)
@@ -334,7 +334,6 @@ class SynchronousCapture:
         """
 
         for j in tqdm(range(capture_count)):
-            tqdm.write("Capturing frame " + str(j+1) + " of " + str(capture_count))
             while True:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     start = time.time()
