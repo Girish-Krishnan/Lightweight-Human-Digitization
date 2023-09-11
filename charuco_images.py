@@ -241,7 +241,7 @@ try:
                 distCoeffs=distCoeffs)
                 
             # Only try to find CharucoBoard if we found markers
-                if ids_1 is not None and len(ids_1) > 10:
+                if ids_1 is not None and len(ids_1) > args.threshold // 2:
                 # Get charuco corners and ids from detected aruco markers
                     response_1, charuco_corners_1, charuco_ids_1 = aruco.interpolateCornersCharuco(
                     markerCorners=corners_1,
