@@ -24,7 +24,7 @@ parser.add_argument('--exposure', type=int, default=70000, help='Exposure of cap
 parser.add_argument('--gain', type=int, default=30, help='Gain of captured images')
 parser.add_argument('--width', type=int, default=640,help='Width of captured images')
 parser.add_argument('--height', type=int, default=480,help='Height of captured images')
-parser.add_argument('--threshold', type=int, default=20,help='Minimum number of common Aruco markers needed')
+parser.add_argument('--threshold_charuco', type=int, default=20,help='Minimum number of common Aruco markers needed')
 
 args = parser.parse_args()
 
@@ -241,19 +241,18 @@ try:
                 distCoeffs=distCoeffs)
                 
             # Only try to find CharucoBoard if we found markers
-                if ids_1 is not None and len(ids_1) > args.threshold // 2:
+                if ids_1 is not None and len(ids_1) > 10:
                 # Get charuco corners and ids from detected aruco markers
                     response_1, charuco_corners_1, charuco_ids_1 = aruco.interpolateCornersCharuco(
                     markerCorners=corners_1,
                     markerIds=ids_1,
                     image=ir_frame_original,
                     board=CHARUCO_BOARD)
-                    
 
-                    if response_1 is not None and response_1 > args.threshold\
-                        and len(charuco_corners_1) == len(objp):
+                    if (response_1 is not None) and (response_1 > 20) and (len(charuco_ids_1) >= args.threshold_charuco):
 
-                        objpoints.append(objp)
+                        objp_matched = objp[charuco_ids_1.flatten()]
+                        objpoints.append(objp_matched)
                         imgpoints_1.append(charuco_corners_1)
 
                         # Outline all of the markers detected in our image

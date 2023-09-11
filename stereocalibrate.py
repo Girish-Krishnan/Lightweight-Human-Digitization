@@ -32,6 +32,7 @@ parser.add_argument('--display_detected_markers', action='store_true')
 parser.add_argument('-w', '--image_width', type=int, default=640)
 parser.add_argument('-h', '--image_height', type=int, default=480)
 parser.add_argument('--odom_file', type=str, default='./odometry.log')
+parser.add_argument('--threshold_charuco',type=int,default=20)
 
 args = parser.parse_args()
 
@@ -186,24 +187,29 @@ for pair in image_pairs:
                     image=gray_2,
                     board=CHARUCO_BOARD)
 
-                if response_1 is not None and response_2 is not None and response_1 > 20 and response_2 > 20\
-                        and len(charuco_corners_1) == len(objp) and len(charuco_corners_2) == len(objp):
-                    common_img_count += 1
+                if response_1 is not None and response_2 is not None:
+                    common_ids, idx_1, idx_2 = np.intersect1d(charuco_ids_1, charuco_ids_2, return_indices=True)
+                    if len(common_ids) >= args.threshold_charuco:
+                        common_img_count += 1
 
-                    objpoints.append(objp)
-                    imgpoints_1.append(charuco_corners_1)
-                    imgpoints_2.append(charuco_corners_2)
+                        charuco_corners_1_matched = charuco_corners_1[idx_1]
+                        charuco_corners_2_matched = charuco_corners_2[idx_2]
+                        objp_matched = objp[common_ids.flatten()]
 
-                    if args.display_detected_markers:
-                        # Outline all of the markers detected in our image
-                        img_1 = aruco.drawDetectedMarkers(img_1, corners_1, borderColor=(0, 0, 255))
-                        img_2 = aruco.drawDetectedMarkers(img_2, corners_2, borderColor=(0, 0, 255))
+                        objpoints.append(objp_matched)
+                        imgpoints_1.append(charuco_corners_1_matched)
+                        imgpoints_2.append(charuco_corners_2_matched)
 
-                        # # Draw and display the corners
-                        images_display = np.hstack((img_1, img_2))
-                        cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
-                        cv2.imshow('RealSense', images_display)
-                        cv2.waitKey(0)
+                        if args.display_detected_markers:
+                            # Outline all of the markers detected in our image
+                            img_1 = aruco.drawDetectedMarkers(img_1, corners_1, borderColor=(0, 0, 255))
+                            img_2 = aruco.drawDetectedMarkers(img_2, corners_2, borderColor=(0, 0, 255))
+
+                            # # Draw and display the corners
+                            images_display = np.hstack((img_1, img_2))
+                            cv2.namedWindow('RealSense', cv2.WINDOW_NORMAL)
+                            cv2.imshow('RealSense', images_display)
+                            cv2.waitKey(0)
 
     cv2.destroyAllWindows()
     print("common_img_count: ", common_img_count)

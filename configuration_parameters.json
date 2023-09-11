@@ -4,9 +4,9 @@
         8,
         11
     ],
-    "num_calibration_imgs": 80,
+    "num_calibration_imgs": 48,
     "img_file_type": ".jpg",
-    "threshold": 1,
+    "threshold": 5,
     "cams": {
         "839212060064": {
             "intrinsics": {
