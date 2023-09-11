@@ -24,6 +24,7 @@ parser.add_argument('--exposure', type=int, default=70000, help='Exposure of cap
 parser.add_argument('--gain', type=int, default=30, help='Gain of captured images')
 parser.add_argument('--width', type=int, default=640,help='Width of captured images')
 parser.add_argument('--height', type=int, default=480,help='Height of captured images')
+parser.add_argument('--threshold', type=int, default=20,help='Minimum number of common Aruco markers needed')
 
 args = parser.parse_args()
 
@@ -249,7 +250,7 @@ try:
                     board=CHARUCO_BOARD)
                     
 
-                    if response_1 is not None and response_1 > 20\
+                    if response_1 is not None and response_1 > args.threshold\
                         and len(charuco_corners_1) == len(objp):
 
                         objpoints.append(objp)
