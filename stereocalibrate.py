@@ -21,7 +21,7 @@ RECONST_IMAGES_DIR = '/reconstruction_images'
 CALIB_IMAGES_DIR = '/calibration_images'
 
 parser = argparse.ArgumentParser(description='Stereo calibration')
-parser.add_argument('--bundle_adjust',help='implement bundle adjustment')
+parser.add_argument('--bundle_adjust',action='store_true')
 parser.add_argument('--config_file', type=str, default='./configuration_parameters.json')
 parser.add_argument('--charuco_rows', type=int, default=9)
 parser.add_argument('--charuco_cols', type=int, default=12)
@@ -29,8 +29,8 @@ parser.add_argument('--square_length', type=float, default=0.060)
 parser.add_argument('--marker_length', type=float, default=0.044)
 parser.add_argument('--data_dir', type=str, default='./Capture_Data')
 parser.add_argument('--display_detected_markers', action='store_true')
-parser.add_argument('-w', '--image_width', type=int, default=640)
-parser.add_argument('-h', '--image_height', type=int, default=480)
+parser.add_argument('--width', type=int, default=640)
+parser.add_argument('--height', type=int, default=480)
 parser.add_argument('--odom_file', type=str, default='./odometry.log')
 parser.add_argument('--threshold_charuco',type=int,default=20)
 
@@ -221,7 +221,7 @@ for pair in image_pairs:
     if common_img_count >= THRESHOLD:
         try:
             rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs,
-                                                            cam2_mtx, distCoeffs, [args.image_width, args.image_height], criteria_stereo, flags)
+                                                            cam2_mtx, distCoeffs, [args.width, args.height], criteria_stereo, flags)
 
             
             if args.bundle_adjust:
