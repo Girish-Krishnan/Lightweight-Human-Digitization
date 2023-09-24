@@ -63,7 +63,7 @@ NUM_CALIB_IMGS = configuration_parameters["num_calibration_imgs"]
 CHECKERBOARD = (
 configuration_parameters["checkerboard_dimensions"][0], configuration_parameters["checkerboard_dimensions"][1])
 CHECKERBOARD_SIZE = configuration_parameters["checkerboard_size_mm"]  # units: millimeters
-CHECKERBOARD_SIZE *= 0.001
+CHECKERBOARD_SIZE *= 0.001 # convert to meters
 IMAGE_TYPE = configuration_parameters["img_file_type"]
 NUM_CAMS = len(configuration_parameters["cams"])
 THRESHOLD = configuration_parameters["threshold"]
@@ -71,7 +71,6 @@ THRESHOLD = configuration_parameters["threshold"]
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 serial_numbers = list(configuration_parameters["cams"].keys())
 
-# Defining th   for 3D points: order is important!!!
 objp = np.zeros((CHECKERBOARD[1] * CHECKERBOARD[0], 3), np.float32)
 objp[:, :2] = np.mgrid[0:CHECKERBOARD[1], 0:CHECKERBOARD[0]].T.reshape(-1, 2)
 objp = CHECKERBOARD_SIZE * objp
@@ -119,8 +118,8 @@ for pair in image_pairs:
     x = pair[0]
     y = pair[1]
     common_img_count = 0  # the number of common images between the two cameras that contain the chessboard successfully detected
-    print('cam1: ', serial_numbers[x])
-    print('cam2: ', serial_numbers[y])
+
+    print("Calibrating cameras " + str(serial_numbers[x]) + " and " + str(serial_numbers[y]))
 
     cam1_f = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_focal_length"]
     cam1_c = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_img_center"]
@@ -213,11 +212,11 @@ for pair in image_pairs:
 
     cv2.destroyAllWindows()
     print("common_img_count: ", common_img_count)
+    print()
 
     flags = cv2.CALIB_FIX_INTRINSIC
     criteria_stereo = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.0001)
-    # transform coordinates in 1st cam frame to 2nd cam frame
-    # gives the position of the 1st cam w.r.t the 2nd cam frame
+
     if common_img_count >= THRESHOLD:
         try:
             rms, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(objpoints, imgpoints_1, imgpoints_2, cam1_mtx, distCoeffs,
