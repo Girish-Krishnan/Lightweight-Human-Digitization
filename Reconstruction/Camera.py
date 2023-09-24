@@ -310,10 +310,10 @@ class SynchronousCapture:
     :param width: The width of the image
     :param height: The height of the image
     :param fps: The frames per second of the image
-    :param warmup_time: The time to wait for the cameras to stabilize, in seconds (default 120)
+    :param warmup_frames: The number of frames to wait for the cameras to stabilize (default 1000)
     """
 
-    def __init__(self, serial_numbers,width,height,fps,output_dir,sub_dir,warmup_time=120,numbered=False) -> None:
+    def __init__(self, serial_numbers,width,height,fps,output_dir,sub_dir,warmup_frames=1000,numbered=False) -> None:
         self.serial_numbers = serial_numbers
         
         self.cameras = [RealSenseCamera(serial_number,width,height,fps) for serial_number in serial_numbers]
@@ -324,7 +324,7 @@ class SynchronousCapture:
         print("[RealSense] Warming up cameras and stabilizing streams")
 
         # Wait for some time to allow camera to stabilize and adjust
-        self.capture(int(warmup_time*fps),verbose=False,save_captures=False)
+        self.capture(int(warmup_frames),verbose=False,save_captures=False)
 
         print("[RealSense] Stabilization Completed")
 

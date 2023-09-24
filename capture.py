@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser.add_argument('-w', '--width', type=int, default=640, help='Width of captured images')
     parser.add_argument('-ht', '--height', type=int, default=480, help='Height of captured images')
     parser.add_argument('-f', '--fps', type=int, default=60, help='FPS of captured images')
-    parser.add_argument('--warmup-time', type=int, default=120, help='Time to wait before capturing images (in seconds)')
+    parser.add_argument('--warmup-frames', type=int, default=1000, help='Number of frames to capture for warm-up')
     parser.add_argument('-n', '--num-captures', type=int, default=20, help='Number of images to capture')
     args = parser.parse_args()
 
@@ -31,8 +31,8 @@ if __name__ == '__main__':
     if args.fps < 0:
         print("Error: FPS cannot be negative")
         exit(-1)
-    if args.warmup_time < 0:
-        print("Error: Warmup time cannot be negative")
+    if args.warmup_frames < 0:
+        print("Error: Warmup frames cannot be negative")
         exit(-1)
     if args.num_captures < 0:
         print("Error: Number of captures cannot be negative")
@@ -108,7 +108,7 @@ if __name__ == '__main__':
                                           width=args.width, 
                                           height=args.height, 
                                           fps=args.fps, 
-                                          warmup_time=args.warmup_time, 
+                                          warmup_frames=args.warmup_frames, 
                                           output_dir=OUTPUT_DIR,
                                           sub_dir=RECONST_IMAGES_DIR,
                                           numbered=numbered

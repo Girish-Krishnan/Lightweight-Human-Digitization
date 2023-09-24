@@ -145,6 +145,7 @@ if len(ctx.devices) > 0:
 
         s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
         serial_numbers.append(s_num)
+        configuration_parameters["cams"][s_num] = {}
         configuration_parameters["cams"][s_num]["intrinsics"] = {}
         configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = [args.width, args.height]
         configuration_parameters["cams"][s_num]["intrinsics"]["focal_length"] = [color_intrinsics.fx,
