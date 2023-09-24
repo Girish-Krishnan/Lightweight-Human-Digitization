@@ -211,7 +211,7 @@ for pair in image_pairs:
                             cv2.waitKey(0)
 
     cv2.destroyAllWindows()
-    print("common_img_count: ", common_img_count)
+    print("Number of common images: ", common_img_count)
     print()
 
     flags = cv2.CALIB_FIX_INTRINSIC
