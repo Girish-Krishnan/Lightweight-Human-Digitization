@@ -212,7 +212,6 @@ for pair in image_pairs:
 
     cv2.destroyAllWindows()
     print("Number of common images: ", common_img_count)
-    print()
 
     flags = cv2.CALIB_FIX_INTRINSIC
     criteria_stereo = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.0001)
@@ -252,6 +251,7 @@ for pair in image_pairs:
         continue
 
     print("Stereo Calibration RMS for cam " + str(x) + " and cam " + str(y) + ": ", rms)
+    print()
     T = T.tolist()
     T = [T[0][0],T[1][0],T[2][0]]
 
