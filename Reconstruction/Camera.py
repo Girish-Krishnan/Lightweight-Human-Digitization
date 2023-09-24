@@ -69,13 +69,13 @@ class Camera:
         Convert the Camera object's depth map to a point cloud
         """
 
-        mask = np.logical_or(self.depth_map > 2, self.depth_map < 0.75)
-        grads = np.gradient(self.depth_map)
-        grad = np.sqrt(grads[0] ** 2 + grads[1] ** 2)
+        # mask = np.logical_or(self.depth_map > 2, self.depth_map < 0.75)
+        # grads = np.gradient(self.depth_map)
+        # grad = np.sqrt(grads[0] ** 2 + grads[1] ** 2)
 
-        mask[grad > 0.05] = True
+        # mask[grad > 0.05] = True
 
-        self.depth_map[mask] = 0
+        # self.depth_map[mask] = 0
 
         self.pcd = np.hstack(
             (np.transpose(np.nonzero(self.depth_map)), np.reshape(self.depth_map[np.nonzero(self.depth_map)], (-1,1)) )

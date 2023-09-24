@@ -28,7 +28,7 @@ parser.add_argument('--charuco_cols', type=int, default=12)
 parser.add_argument('--square_length', type=float, default=0.060)
 parser.add_argument('--marker_length', type=float, default=0.044)
 parser.add_argument('--data_dir', type=str, default='./Capture_Data')
-parser.add_argument('--display_detected_markers', action='store_true')
+parser.add_argument('--display', action='store_true')
 parser.add_argument('--width', type=int, default=640)
 parser.add_argument('--height', type=int, default=480)
 parser.add_argument('--odom_file', type=str, default='./odometry.log')
@@ -200,7 +200,7 @@ for pair in image_pairs:
                         imgpoints_1.append(charuco_corners_1_matched)
                         imgpoints_2.append(charuco_corners_2_matched)
 
-                        if args.display_detected_markers:
+                        if args.display:
                             # Outline all of the markers detected in our image
                             img_1 = aruco.drawDetectedMarkers(img_1, corners_1, borderColor=(0, 0, 255))
                             img_2 = aruco.drawDetectedMarkers(img_2, corners_2, borderColor=(0, 0, 255))

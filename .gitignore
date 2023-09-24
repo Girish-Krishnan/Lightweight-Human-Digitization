@@ -1,4 +1,4 @@
-.bag
+*.bag
 .ipynb_checkpoints
 .cpython-36.pyc
 .cpython-37.pyc
@@ -6,10 +6,9 @@
 .cpython-39.pyc
 .cpython-310.pyc
 .idea
-git_push.sh
-.ply
+*.ply
 .idea
-.vscode
+*.vscode
 __pycache__
 .DS_Store
 .3D_Human_Reconstruction.pynb.icloud
