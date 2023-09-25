@@ -31,7 +31,6 @@ parser.add_argument('--data_dir', type=str, default='./Capture_Data')
 parser.add_argument('--display', action='store_true')
 parser.add_argument('--width', type=int, default=640)
 parser.add_argument('--height', type=int, default=480)
-parser.add_argument('--odom_file', type=str, default='./odometry.log')
 parser.add_argument('--threshold_charuco',type=int,default=20)
 
 args = parser.parse_args()
@@ -54,7 +53,6 @@ CHARUCO_BOARD = aruco.CharucoBoard_create(
 
 
 # LOAD INITIAL CONFIG PARAMS, which are then modified in the program
-
 with(open(args.config_file)) as f:
     configuration_parameters = json.load(f)
     f.close()
@@ -280,6 +278,3 @@ for pair in image_pairs:
     configuration_parameters["cams"][serial_numbers[y]][serial_numbers[x]]["rotation"] = r_mat.tolist()
 
     json.dump(configuration_parameters, open(args.config_file, "w"), indent=4)
-
-    write_to_file(args.odom_file, 0, np.eye(3), [0, 0, 0])
-    write_to_file(args.odom_file, 1, r_mat, t)

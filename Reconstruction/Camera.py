@@ -6,11 +6,12 @@ try:
     import numpy as np
     import open3d as o3d
     import copy
-    import pyrealsense2 as rs
     import concurrent.futures
     from tqdm import tqdm
     import os
     import time
+    from PIL import Image, ImageFilter
+    import pyrealsense2 as rs
     import matplotlib.pyplot as plt
 except ImportError as e:
     print("Warning: Unable to import one or more modules due to the following error: ", e)
@@ -50,6 +51,7 @@ class Camera:
         """
         self.image = image
         self.depth_map = depth_map
+        self.post_process()
         
     def display(self):
         """
@@ -62,7 +64,28 @@ class Camera:
         fig.add_subplot(1,2,2)
         plt.imshow(self.depth_map)
         plt.title("Depth Map")
-        plt.show()          
+        plt.show()
+
+    def post_process(self):
+        self.depth_map = crop_depth(self.depth_map,0.1,1.5)
+        #self.depth_map = crop_sides(self.depth_map,0.1)
+        
+        depth_map_data_rgb = Image.fromarray(1000*self.depth_map)
+        depth_map_data_rgb = depth_map_data_rgb.convert("RGB")
+        depth_map_data_rgb = depth_map_data_rgb.filter(ImageFilter.ModeFilter(size=13))
+        depth_map_data_rgb = np.array(depth_map_data_rgb)
+        depth_map_data_rgb = depth_map_data_rgb[:, :, 0]
+        depth_map_data_rgb = remove_noise(depth_map_data_rgb)
+        depth_map_data_rgb = remove_border(depth_map_data_rgb, 17)
+
+        window_size = 5
+        variance_threshold = 5
+        variance = cv.filter2D(depth_map_data_rgb.astype(float)**2, -1, np.ones((window_size, window_size)), borderType=cv.BORDER_REFLECT)
+        variance_mask = variance < variance_threshold
+        variance_copy = np.copy(depth_map_data_rgb)
+        variance_copy[variance_mask] = 255
+        depth_map_data_rgb = cv.bitwise_and(variance_copy, depth_map_data_rgb)
+        self.depth_map[depth_map_data_rgb == 0] = 0
 
     def point_cloud(self): 
         """
@@ -121,6 +144,76 @@ class Camera:
         o3d.visualization.draw_geometries([self.pcd_o3d])
 
 
+"""
+Functions for post-processing
+"""
+
+def dynamic_thickness(y, max_thickness, height, min_y, max_y):
+    # This function returns a thickness based on y-coordinate
+    # You can modify this function to suit your specific requirements
+    return max_thickness if y > min_y + (max_y - min_y) / 25 else max_thickness // 3
+
+def draw_contour_with_dynamic_thickness(img, contour, max_thickness):
+    height, _, = img.shape
+    min_y = np.min(contour[:, :, 1])
+    max_y = np.max(contour[:, :, 1])
+    for i in range(len(contour) - 1):
+        y_value = contour[i][0][1]
+        thickness = dynamic_thickness(y_value, max_thickness, height, min_y, max_y)
+        
+        # Drawing a line segment between two subsequent points
+        cv.line(img, tuple(contour[i][0]), tuple(contour[i+1][0]), (0, 0, 0), thickness)
+    
+    # Closing the contour (connecting the last and the first point)
+    y_value = contour[-1][0][1]
+    thickness = dynamic_thickness(y_value, max_thickness, height, min_y, max_y)
+    cv.line(img, tuple(contour[-1][0]), tuple(contour[0][0]), (0, 0, 0), thickness)
+    return img
+
+def remove_border(image, border_thickness):
+    # Threshold the grayscale image to create a binary mask
+    _, binary_mask = cv.threshold(image, 127, 255, cv.THRESH_BINARY)
+
+    # Find the contours of the human subject
+    contours, _ = cv.findContours(binary_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    if len(contours) == 0:
+        return image
+    
+    largest_contour = max(contours, key=cv.contourArea)
+
+    # Draw the contour with a thickness to create a border
+    #cv.drawContours(binary_mask, contours, -1, (0, 0, 0), border_thickness)
+    if len(contours) > 0:
+       binary_mask = draw_contour_with_dynamic_thickness(binary_mask, largest_contour, border_thickness)
+
+    return binary_mask
+
+def crop_depth(depth,lower_bound,upper_bound):
+    depth[depth < lower_bound] = 0
+    depth[depth > upper_bound] = 0
+    return depth
+
+def crop_sides(img,percent):
+    height, width = img.shape
+    img[:,0:int(height*percent)] = 0
+    img[:,int(height*(1-percent)):] = 0
+    return img
+
+def remove_noise(img):
+    _, binary_mask = cv.threshold(img, 127, 255, cv.THRESH_BINARY)
+    contours, hierarchy = cv.findContours(binary_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    if len(contours) == 0:
+        return img
+    largest_contour = max(contours, key=cv.contourArea)
+    output_img = np.zeros_like(img)
+    cv.drawContours(output_img, [largest_contour], 0, 255, thickness=cv.FILLED)
+    return output_img
+    
+
+"""
+Classes for 3D reconstruction, combining PCDs
+"""
+
 class Combiner:
 
     """
@@ -153,6 +246,13 @@ class Combiner:
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors)
 
         self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.05)
+
+        # Implement Poisson Surface Reconstruction
+        # self.pcd_o3d.estimate_normals()
+        # self.mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d, depth=8)
+
+        #self.pcd_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+        #self.pcd_o3d = self.pcd_o3d.bilateral_filter(sigma_s=0.05, sigma_r=0.05, fast_kernel=True)
 
     def rotate_point_cloud(self,rotate):  
         """

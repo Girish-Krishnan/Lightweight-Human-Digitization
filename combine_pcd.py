@@ -8,6 +8,7 @@ import cv2 as cv
 import open3d as o3d
 import sys
 import argparse
+from trajectory_utils.trajectory_io import *
 
 RECONST_IMAGES_DIR = '/reconstruction_images'
 CALIB_IMAGES_DIR = '/calibration_images'
@@ -18,6 +19,7 @@ parser.add_argument('--output_file', type=str, default='./point_cloud_combined.p
 parser.add_argument('--data_dir', type=str, default='./Capture_Data')
 parser.add_argument('--save_individual', action='store_true')
 parser.add_argument('--visualize', action='store_true')
+parser.add_argument('--odom_file', type=str, default='./odometry.log')
 args = parser.parse_args()
 
 """
@@ -29,6 +31,9 @@ param = json.load(open(SETTINGS_PATH))
 cams_list = list(param["cams"].keys())
 print("cams_list: ", cams_list)
 CAM_DATA = [param["cams"][cam] for cam in param["cams"]]  # camera data
+# Empty the odom file
+with(open(args.odom_file, "w")) as f:
+    f.close()
 
 """
 DETERMINING R and T for each cam relative to the first cam
@@ -111,6 +116,12 @@ for i in range(len(cams_list)):
         print("___")
         cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
                                  CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation))
+
+    trans = np.vstack( (np.hstack((np.array(rotation), np.array(translation).reshape(-1,1))), [0,0,0,1]) )
+    r_mat = trans[0:3, 0:3]
+    t = trans[0:3, 3] 
+    write_to_file(args.odom_file, 0, np.eye(3), [0, 0, 0])
+    write_to_file(args.odom_file, 1, r_mat, t)
 
 for i in range(len(cams_list)):
     cam[i].add_image(cv.imread(args.data_dir + "/" + cams_list[i] + RECONST_IMAGES_DIR + "/image.jpg"),
