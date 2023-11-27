@@ -21,9 +21,17 @@ try:
     pc.map_to(frames.get_color_frame())
     points = pc.calculate(depth_frame)
 
+    ply = rs.save_to_ply("normal.ply")
+    ply.set_option(rs.save_to_ply.option_ply_binary, False)
+    ply.set_option(rs.save_to_ply.option_ply_normals, True)
+    ply.process(frames)
+
     # Get vertex and normal arrays
     vertices = np.asanyarray(points.get_vertices())
-    #normals = np.asanyarray(points.get_normals())
+    mesh = o3d.io.read_triangle_mesh("normal.ply")
+    normals = np.asanyarray(mesh.vertex_normals)
+    print(vertices.shape)
+    print(normals.shape)
 
     # Map each 3D point to 2D
     depth_pixel_coords = []
@@ -31,9 +39,11 @@ try:
         x, y, z = vertex
         # Use intrinsic parameters to project 3D point to 2D
         pixel_x, pixel_y = rs.rs2_project_point_to_pixel(intrinsics, [x, y, z])
-        depth_pixel_coords.append((pixel_x, pixel_y))
+        if np.isnan(pixel_x):
+            continue
+        depth_pixel_coords.append((int(pixel_x), int(pixel_y)))
 
-    print(depth_pixel_coords)
+    print(len(depth_pixel_coords))
 
 finally:
     pipe.stop()
