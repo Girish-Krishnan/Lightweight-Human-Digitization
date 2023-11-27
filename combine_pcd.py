@@ -20,6 +20,7 @@ parser.add_argument('--data_dir', type=str, default='./Capture_Data')
 parser.add_argument('--save_individual', action='store_true')
 parser.add_argument('--visualize', action='store_true')
 parser.add_argument('--odom_file', type=str, default='./odometry.log')
+parser.add_argument('--mesh_file', type=str, default='./mesh_combined.ply')
 args = parser.parse_args()
 
 """
@@ -133,6 +134,7 @@ for i in range(len(cams_list)):
 combiner = Camera.Combiner(cam)
 combiner.combine()
 o3d.io.write_point_cloud(args.output_file, combiner.pcd_o3d)
+o3d.io.write_triangle_mesh(args.mesh_file, combiner.mesh_o3d)
 
 if args.visualize:
     combiner.visualize()

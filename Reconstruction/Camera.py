@@ -245,15 +245,16 @@ class Combiner:
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors)
 
-        self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.05)
+        self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.1)
 
-        # Implement Poisson Surface Reconstruction
-        # self.pcd_o3d.estimate_normals()
-        # self.mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d, depth=8)
+        # Old Poisson Surface Reconstruction Method - didn't work
 
-        #self.pcd_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-        #self.pcd_o3d = self.pcd_o3d.bilateral_filter(sigma_s=0.05, sigma_r=0.05, fast_kernel=True)
-
+        self.pcd_o3d.estimate_normals()
+        self.pcd_o3d.orient_normals_towards_camera_location()
+        self.mesh_o3d, self.mesh_id = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d, depth=8, width=0.0, scale=1.0, linear_fit=False)[0:2]
+        self.mesh_o3d.compute_vertex_normals()
+        self.mesh_o3d = self.mesh_o3d.filter_smooth_simple(number_of_iterations=10)
+               
     def rotate_point_cloud(self,rotate):  
         """
         Rotate the combined point cloud of the Combiner object
@@ -267,6 +268,25 @@ class Combiner:
         Visualize the combined point cloud of the Combiner object
         """
         o3d.visualization.draw_geometries([self.pcd_o3d])
+
+        # Estimate normals for the point cloud, and then visualize the point cloud with normals
+        self.pcd_o3d.estimate_normals()
+        points = np.asarray(self.pcd_o3d.points)
+        normals = np.asarray(self.pcd_o3d.normals)
+
+        # Create lines for normals from points to (points + normals)
+        lines = [[i, i + len(points)] for i in range(len(points))]
+        points_with_normals = np.vstack([points, points + 0.02*normals])  # Adjust the 0.02 scalar to scale the length of the normals
+
+        # Create a LineSet from the points and lines
+        line_set = o3d.geometry.LineSet(
+            points=o3d.utility.Vector3dVector(points_with_normals),
+            lines=o3d.utility.Vector2iVector(lines),
+        )
+
+        # Visualize the point cloud and normals
+        o3d.visualization.draw_geometries([self.pcd_o3d, line_set])
+
 
     def draw_registration_result(self, source, target, transformation):
         """
@@ -352,6 +372,11 @@ class RealSenseCamera:
         # enable sync between multiple cameras
         self.depth_sensor.set_option(rs.option.inter_cam_sync_mode, 1)
 
+        # Handle normals
+        self.ply = rs.save_to_ply(f"normal_{serial_number}.ply")
+        self.ply.set_option(rs.save_to_ply.option_ply_binary, False)
+        self.ply.set_option(rs.save_to_ply.option_ply_normals, True)
+
     def get_frames(self):
         """
         :return: The frameset of the RealSenseCamera object
@@ -365,6 +390,9 @@ class RealSenseCamera:
 
         """    
         aligned_frames = rs.align(rs.stream.depth).process(frames)
+        self.ply.process(aligned_frames)
+        mesh = o3d.io.read_triangle_mesh(f"normal_{self.serial_number}.ply")
+        self.normals = np.asarray(mesh.vertex_normals)
 
         # Get aligned frames
         self.aligned_depth_frame = aligned_frames.get_depth_frame()
