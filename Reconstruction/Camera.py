@@ -33,7 +33,7 @@ class Camera:
     :param translation: The translation vector
     """
 
-    def __init__(self,img_size,focal_length,img_center,rotation,translation):
+    def __init__(self,img_size,focal_length,img_center,rotation,translation,serial_number):
         self.rotation = np.array(rotation)
         self.translation = np.array(translation)
         self.img_id = ""         
@@ -42,6 +42,7 @@ class Camera:
         self.cx = img_center[0]
         self.cy = img_center[1]
         self.img_size = img_size
+        self.serial_number = serial_number
 
     def add_image(self,image,depth_map):
         """
@@ -51,6 +52,8 @@ class Camera:
         """
         self.image = image
         self.depth_map = depth_map
+        self.mesh = o3d.io.read_triangle_mesh("normal_" + self.serial_number + ".ply")
+        self.normals = np.asarray(self.mesh.vertex_normals)
         self.post_process()
         
     def display(self):
@@ -114,10 +117,20 @@ class Camera:
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors/255)
 
-        self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.05)
+        self.pcd_o3d, ind = self.pcd_o3d.remove_radius_outlier(1000,radius=0.05)
 
         self.pcd = np.asarray(self.pcd_o3d.points)
         self.colors = np.asarray(self.pcd_o3d.colors)
+
+        filtered_normals = np.asarray(self.normals)[ind]
+
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(self.pcd)
+        mesh.vertex_colors = o3d.utility.Vector3dVector(self.colors)
+        mesh.vertex_normals = o3d.utility.Vector3dVector(filtered_normals)
+
+        self.mesh = mesh
+        self.filtered_normals = filtered_normals
 
 
     def translate_point_cloud(self,vector):
@@ -127,6 +140,7 @@ class Camera:
 
         """
         self.pcd += vector
+        self.filtered_normals += vector
 
     def rotate_point_cloud(self,rotate):
         """
@@ -135,6 +149,7 @@ class Camera:
 
         """
         self.pcd = np.matmul(rotate,self.pcd.T).T
+        self.filtered_normals = np.matmul(rotate,self.filtered_normals.T).T
 
     def visualize(self):
         """
@@ -241,11 +256,19 @@ class Combiner:
         self.colors = np.concatenate(tuple([i.colors for i in self.cam_array]),axis=0)
         self.complete_pcd = np.hstack((self.pcd,self.colors))
 
+        self.normals = np.concatenate(tuple([i.filtered_normals for i in self.cam_array]),axis=0)
+
         self.pcd_o3d = o3d.geometry.PointCloud()
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors)
 
-        self.pcd_o3d, _ = self.pcd_o3d.remove_radius_outlier(1000,radius=0.1)
+        # self.pcd_o3d, ind = self.pcd_o3d.remove_radius_outlier(1000,radius=0.1)
+
+        # Make a mesh using the self.normals
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(self.pcd)
+        mesh.vertex_colors = o3d.utility.Vector3dVector(self.colors)
+        mesh.vertex_normals = o3d.utility.Vector3dVector(self.normals)
 
         # Old Poisson Surface Reconstruction Method - didn't work
 
@@ -391,8 +414,6 @@ class RealSenseCamera:
         """    
         aligned_frames = rs.align(rs.stream.depth).process(frames)
         self.ply.process(aligned_frames)
-        mesh = o3d.io.read_triangle_mesh(f"normal_{self.serial_number}.ply")
-        self.normals = np.asarray(mesh.vertex_normals)
 
         # Get aligned frames
         self.aligned_depth_frame = aligned_frames.get_depth_frame()
