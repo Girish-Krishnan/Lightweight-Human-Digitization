@@ -6,6 +6,7 @@ import numpy as np
 pipe = rs.pipeline()
 config = rs.config()
 config.enable_stream(rs.stream.depth)
+config.enable_stream(rs.stream.color)
 profile = pipe.start(config)
 
 try:
@@ -22,7 +23,7 @@ try:
 
     # Get vertex and normal arrays
     vertices = np.asanyarray(points.get_vertices())
-    normals = np.asanyarray(points.get_normals())
+    #normals = np.asanyarray(points.get_normals())
 
     # Map each 3D point to 2D
     depth_pixel_coords = []
@@ -32,8 +33,7 @@ try:
         pixel_x, pixel_y = rs.rs2_project_point_to_pixel(intrinsics, [x, y, z])
         depth_pixel_coords.append((pixel_x, pixel_y))
 
-    # Now, `depth_pixel_coords` contains 2D coordinates on depth map corresponding to each 3D point
-    # ...
+    print(depth_pixel_coords)
 
 finally:
     pipe.stop()
