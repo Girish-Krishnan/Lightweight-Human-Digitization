@@ -10,8 +10,8 @@ try:
     from tqdm import tqdm
     import os
     import time
-    from PIL import Image, ImageFilter
     import pyrealsense2 as rs
+    from PIL import Image, ImageFilter
     import matplotlib.pyplot as plt
 except ImportError as e:
     print("Warning: Unable to import one or more modules due to the following error: ", e)
@@ -473,11 +473,11 @@ class SynchronousCapture:
         print("[RealSense] Warming up cameras and stabilizing streams")
 
         # Wait for some time to allow camera to stabilize and adjust
-        self.capture(int(warmup_frames),verbose=False,save_captures=False)
+        self.capture(int(warmup_frames),verbose=False,save_captures=False, process_frames=False)
 
         print("[RealSense] Stabilization Completed")
 
-    def capture(self,capture_count,verbose=False,save_captures=False):
+    def capture(self,capture_count,verbose=False,save_captures=False, process_frames=True):
         """
         Capture a single frame from all cameras simultaneously
         """
@@ -493,13 +493,14 @@ class SynchronousCapture:
                     if verbose:
                         print("Time taken to capture frames: " + str(end - start))
 
-                    if all(results):
-                        if save_captures:
-                            self.save()
-                        break
+                if process_frames:
+                    [camera.process_frames(result) for camera, result in zip(self.cameras, results)]
 
-            # Process frames
-            [camera.process_frames(result) for camera, result in zip(self.cameras, results)]
+                if all(results):
+                    if save_captures:
+                        self.save()
+                
+                break
 
     def save(self):
         """
