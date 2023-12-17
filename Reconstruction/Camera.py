@@ -445,7 +445,7 @@ class RealSenseCamera:
 
         else:
             # Find the number of files in the directory
-            num_files = len([f for f in os.listdir(root_directory + self.serial_number + "/" + sub_directory) if os.path.isfile(os.path.join(root_directory + self.serial_number + "/" + sub_directory, f))])
+            num_files = len([f for f in os.listdir(root_directory + "/" + self.serial_number + "/" + sub_directory) if os.path.isfile(os.path.join(root_directory + self.serial_number + "/" + sub_directory, f))])
             cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/image_" + str(num_files//4) + ".jpg", color_image)
             cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/raw_image_" + str(num_files//4) + ".jpg", raw_color_image)
             np.save(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth_map_" + str(num_files//4) + ".npy", depth_image)
