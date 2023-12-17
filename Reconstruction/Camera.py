@@ -10,9 +10,9 @@ try:
     from tqdm import tqdm
     import os
     import time
-    import pyrealsense2 as rs
     from PIL import Image, ImageFilter
     import matplotlib.pyplot as plt
+    import pyrealsense2 as rs
 except ImportError as e:
     print("Warning: Unable to import one or more modules due to the following error: ", e)
     pass
@@ -251,16 +251,16 @@ class Combiner:
             self.cam_array[i].translate_point_cloud(self.cam_array[i].translation)
 
         self.pcd = np.concatenate(tuple([i.pcd for i in self.cam_array]),axis=0)
+        self.normals = np.concatenate(tuple([i.filtered_normals for i in self.cam_array]),axis=0)
         self.rotate_point_cloud(np.array([[1,0,0],[0,-1,0],[0,0,-1]]))
 
         self.colors = np.concatenate(tuple([i.colors for i in self.cam_array]),axis=0)
         self.complete_pcd = np.hstack((self.pcd,self.colors))
 
-        self.normals = np.concatenate(tuple([i.filtered_normals for i in self.cam_array]),axis=0)
-
         self.pcd_o3d = o3d.geometry.PointCloud()
         self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
         self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors)
+        self.pcd_o3d.normals = o3d.utility.Vector3dVector(self.normals)
 
         # self.pcd_o3d, ind = self.pcd_o3d.remove_radius_outlier(1000,radius=0.1)
 
@@ -269,14 +269,16 @@ class Combiner:
         mesh.vertices = o3d.utility.Vector3dVector(self.pcd)
         mesh.vertex_colors = o3d.utility.Vector3dVector(self.colors)
         mesh.vertex_normals = o3d.utility.Vector3dVector(self.normals)
+        mesh.orient_triangles()
 
-        # Old Poisson Surface Reconstruction Method - didn't work
+        self.mesh_o3d = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d)[0]
 
-        self.pcd_o3d.estimate_normals()
-        self.pcd_o3d.orient_normals_towards_camera_location()
-        self.mesh_o3d, self.mesh_id = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d, depth=8, width=0.0, scale=1.0, linear_fit=False)[0:2]
-        self.mesh_o3d.compute_vertex_normals()
-        self.mesh_o3d = self.mesh_o3d.filter_smooth_simple(number_of_iterations=10)
+        # Poisson Surface Reconstruction Method
+        # self.pcd_o3d.estimate_normals()
+        # self.pcd_o3d.orient_normals_towards_camera_location()
+        # self.mesh_o3d_poisson, self.mesh_id = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d, depth=8, width=0.0, scale=1.0, linear_fit=False)[0:2]
+        # self.mesh_o3d_poisson.compute_vertex_normals()
+        # self.mesh_o3d_poisson = self.mesh_o3d_poisson.filter_smooth_simple(number_of_iterations=10)
                
     def rotate_point_cloud(self,rotate):  
         """
@@ -285,6 +287,7 @@ class Combiner:
 
         """
         self.pcd = np.matmul(rotate,self.pcd.T).T
+        self.normals = np.matmul(rotate,self.normals.T).T
 
     def visualize(self):
         """
