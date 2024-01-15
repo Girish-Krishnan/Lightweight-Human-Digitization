@@ -96,7 +96,7 @@ for i in range(len(cams_list)):
                     [0.0, 0.0, 1.0]]
         translation = [0.0, 0.0, 0.0]
         cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
-                                 CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation, cams_list[i]))
+                                 CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation, cams_list[i], args.data_dir))
         path = find_path_to_cam_0(cams_list[i])
 
 
@@ -116,7 +116,7 @@ for i in range(len(cams_list)):
         print("Final translation: ", translation)
         print("___")
         cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
-                                 CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation, cams_list[i]))
+                                 CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation, cams_list[i], args.data_dir))
 
     trans = np.vstack( (np.hstack((np.array(rotation), np.array(translation).reshape(-1,1))), [0,0,0,1]) )
     r_mat = trans[0:3, 0:3]

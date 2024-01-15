@@ -33,7 +33,7 @@ class Camera:
     :param translation: The translation vector
     """
 
-    def __init__(self,img_size,focal_length,img_center,rotation,translation,serial_number):
+    def __init__(self,img_size,focal_length,img_center,rotation,translation,serial_number, data_dir):
         self.rotation = np.array(rotation)
         self.translation = np.array(translation)
         self.img_id = ""         
@@ -43,6 +43,7 @@ class Camera:
         self.cy = img_center[1]
         self.img_size = img_size
         self.serial_number = serial_number
+        self.data_dir = data_dir
 
     def add_image(self,image,depth_map):
         """
@@ -52,7 +53,7 @@ class Camera:
         """
         self.image = image
         self.depth_map = depth_map
-        self.mesh = o3d.io.read_triangle_mesh("normal_" + self.serial_number + ".ply")
+        self.mesh = o3d.io.read_triangle_mesh(f"{self.data_dir}/{self.serial_number}/reconstruction_images/normal_" + self.serial_number + ".ply")
         self.normals = np.asarray(self.mesh.vertex_normals)
         self.post_process()
         
@@ -375,7 +376,7 @@ class RealSenseCamera:
     
     """
 
-    def __init__(self, serial_number,width,height,fps) -> None:
+    def __init__(self, serial_number,width,height,fps, output_dir) -> None:
         # Create RealSense D415 camera object and pipeline
         self.serial_number = serial_number
         self.pipeline = rs.pipeline()
@@ -399,7 +400,7 @@ class RealSenseCamera:
         self.depth_sensor.set_option(rs.option.inter_cam_sync_mode, 1)
 
         # Handle normals
-        self.ply = rs.save_to_ply(f"normal_{serial_number}.ply")
+        self.ply = rs.save_to_ply(f"{output_dir}/{serial_number}/reconstruction_images/normal_{serial_number}.ply")
         self.ply.set_option(rs.save_to_ply.option_ply_binary, False)
         self.ply.set_option(rs.save_to_ply.option_ply_normals, True)
 
@@ -468,7 +469,7 @@ class SynchronousCapture:
     def __init__(self, serial_numbers,width,height,fps,output_dir,sub_dir,warmup_frames=1000,numbered=False) -> None:
         self.serial_numbers = serial_numbers
         
-        self.cameras = [RealSenseCamera(serial_number,width,height,fps) for serial_number in serial_numbers]
+        self.cameras = [RealSenseCamera(serial_number,width,height,fps, output_dir) for serial_number in serial_numbers]
         self.output_dir = output_dir
         self.sub_dir = sub_dir
         self.numbered = numbered
