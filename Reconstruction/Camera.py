@@ -10,8 +10,9 @@ try:
     from tqdm import tqdm
     import os
     import time
-    from PIL import Image, ImageFilter
     import pyrealsense2 as rs
+    from PIL import Image, ImageFilter
+    
     
     import matplotlib.pyplot as plt
 except ImportError as e:
