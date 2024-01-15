@@ -10,8 +10,9 @@ try:
     from tqdm import tqdm
     import os
     import time
-    import pyrealsense2 as rs
     from PIL import Image, ImageFilter
+    import pyrealsense2 as rs
+    
     import matplotlib.pyplot as plt
 except ImportError as e:
     print("Warning: Unable to import one or more modules due to the following error: ", e)
