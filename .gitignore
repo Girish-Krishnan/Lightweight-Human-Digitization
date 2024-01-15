@@ -7,6 +7,7 @@
 .cpython-310.pyc
 .idea
 *.ply
+!normal*.ply
 .idea
 *.vscode
 __pycache__
