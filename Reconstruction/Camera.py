@@ -335,11 +335,11 @@ class Combiner:
 
         # Print the number of clusters and number of points in each cluster
         max_label = labels.max()
-        print("Number of clusters: " + str(max_label + 1))
+        #print("Number of clusters: " + str(max_label + 1))
 
         # For each cluster, print number of points
-        for i in range(max_label + 1):
-            print("Number of points in cluster " + str(i) + ": " + str(np.sum(labels == i)))
+        # for i in range(max_label + 1):
+        #     print("Number of points in cluster " + str(i) + ": " + str(np.sum(labels == i)))
 
         # Assuming the extraneous cluster is the cluster with the fewest points
         extraneous_cluster_label = 3

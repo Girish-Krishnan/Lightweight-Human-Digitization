@@ -30,7 +30,7 @@ GET CALIBRATION DATA
 SETTINGS_PATH = args.config_file
 param = json.load(open(SETTINGS_PATH))
 cams_list = list(param["cams"].keys())
-print("cams_list: ", cams_list)
+#print("cams_list: ", cams_list)
 CAM_DATA = [param["cams"][cam] for cam in param["cams"]]  # camera data
 # Empty the odom file
 with(open(args.odom_file, "w")) as f:
@@ -87,7 +87,7 @@ cam = []
 for i in range(len(cams_list)):
     calibrated_cams = [x for x in list(CAM_DATA[i].keys()) if x != "intrinsics"]
     if len(calibrated_cams) == 0:
-        print("No stereocalibration data for camera " + cams_list[i])
+        #print("No stereocalibration data for camera " + cams_list[i])
         continue
 
     if i == 0:
@@ -110,11 +110,11 @@ for i in range(len(cams_list)):
             previous_rotation = CAM_DATA[idx][path[j]]["rotation"]
             translation = np.add(CAM_DATA[idx][path[j]]["translation"], np.matmul(previous_rotation, translation))
             rotation = np.matmul(previous_rotation, rotation)
-        print("Current Cam: ", cams_list[i])
-        print("path to cam0: ", path)
-        print("Final rotation: \n", rotation)
-        print("Final translation: ", translation)
-        print("___")
+        #print("Current Cam: ", cams_list[i])
+        #print("path to cam0: ", path)
+        #print("Final rotation: \n", rotation)
+        #print("Final translation: ", translation)
+        #print("___")
         cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
                                  CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation, cams_list[i], args.data_dir))
 
@@ -137,5 +137,5 @@ o3d.io.write_point_cloud(args.output_file, combiner.pcd_o3d)
 #o3d.io.write_triangle_mesh(args.mesh_file, combiner.mesh_o3d)
 o3d.io.write_triangle_mesh(args.mesh_file.split('.')[0] + '-computed.ply', combiner.mesh_o3d_poisson)
 
-if args.visualize:
-    combiner.visualize()
+# if args.visualize:
+#     combiner.visualize()
