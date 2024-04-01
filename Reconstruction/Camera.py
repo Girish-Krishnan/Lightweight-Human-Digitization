@@ -341,8 +341,8 @@ class Combiner:
         for i in range(max_label + 1):
             print("Number of points in cluster " + str(i) + ": " + str(np.sum(labels == i)))
 
-        # Assuming the extraneous cluster has a distinct label, e.g., 1
-        extraneous_cluster_label = 1
+        # Assuming the extraneous cluster is the cluster with the fewest points
+        extraneous_cluster_label = np.argmin(np.bincount(labels))
 
         # Find the indices of points (and hence mesh vertices) that are not part of the extraneous cluster
         indices_to_keep = np.where(labels != extraneous_cluster_label)[0]
