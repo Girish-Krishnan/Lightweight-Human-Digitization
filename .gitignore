@@ -13,3 +13,5 @@
 __pycache__
 .DS_Store
 .3D_Human_Reconstruction.pynb.icloud
+*.stl
+*.log

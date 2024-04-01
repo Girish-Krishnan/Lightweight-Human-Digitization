@@ -10,8 +10,8 @@ try:
     from tqdm import tqdm
     import os
     import time
-    import pyrealsense2 as rs
     from PIL import Image, ImageFilter
+    import pyrealsense2 as rs
     
     
     import matplotlib.pyplot as plt
@@ -83,6 +83,10 @@ class Camera:
         depth_map_data_rgb = depth_map_data_rgb[:, :, 0]
         depth_map_data_rgb = remove_noise(depth_map_data_rgb)
         depth_map_data_rgb = remove_border(depth_map_data_rgb, 17)
+
+        # view depth map
+        # cv.imshow("depth map", depth_map_data_rgb)
+        # cv.waitKey(0)
 
         window_size = 5
         variance_threshold = 5
@@ -268,20 +272,119 @@ class Combiner:
         # self.pcd_o3d, ind = self.pcd_o3d.remove_radius_outlier(1000,radius=0.1)
 
         # Make a mesh using the self.normals
-        mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(self.pcd)
-        mesh.vertex_colors = o3d.utility.Vector3dVector(self.colors)
-        mesh.vertex_normals = o3d.utility.Vector3dVector(self.normals)
-        mesh.orient_triangles()
+        # mesh = o3d.geometry.TriangleMesh()
+        # mesh.vertices = o3d.utility.Vector3dVector(self.pcd)
+        # mesh.vertex_colors = o3d.utility.Vector3dVector(self.colors)
+        # mesh.vertex_normals = o3d.utility.Vector3dVector(self.normals)
+        # mesh.orient_triangles()
 
-        self.mesh_o3d = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d)[0]
+        # self.mesh_o3d = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d)[0]
 
-        # Poisson Surface Reconstruction Method
+        # # Make a mesh using estimated normals
+        # self.pcd_o3d = o3d.geometry.PointCloud()
+        # self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
+        # #self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors)
         # self.pcd_o3d.estimate_normals()
-        # self.pcd_o3d.orient_normals_towards_camera_location()
+        # self.pcd_o3d.orient_normals_consistent_tangent_plane(k=20)
         # self.mesh_o3d_poisson, self.mesh_id = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.pcd_o3d, depth=8, width=0.0, scale=1.0, linear_fit=False)[0:2]
+        # original_colors = self.colors
         # self.mesh_o3d_poisson.compute_vertex_normals()
         # self.mesh_o3d_poisson = self.mesh_o3d_poisson.filter_smooth_simple(number_of_iterations=10)
+        # #self.mesh_o3d_poisson.vertex_colors = o3d.utility.Vector3dVector(original_colors)
+
+        # # Print the number of vertices
+        # print("Number of vertices: " + str(len(np.asarray(self.mesh_o3d_poisson.vertices))))
+        # # Print the number of triangles
+        # print("Number of triangles: " + str(len(np.asarray(self.mesh_o3d_poisson.triangles))))
+        # # Print the number of colors in original colors
+        # print("Number of colors: " + str(len(original_colors)))
+
+        # Assuming self.pcd and self.colors are already defined
+        self.pcd_o3d = o3d.geometry.PointCloud()
+        self.pcd_o3d.points = o3d.utility.Vector3dVector(self.pcd)
+        self.pcd_o3d.colors = o3d.utility.Vector3dVector(self.colors)
+        self.pcd_o3d.estimate_normals()
+        self.pcd_o3d.orient_normals_consistent_tangent_plane(k=20)
+
+        # Create mesh using Poisson reconstruction and smooth it
+        self.mesh_o3d_poisson, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+            self.pcd_o3d, depth=8, width=0.0, scale=1.0, linear_fit=False)
+        self.mesh_o3d_poisson.compute_vertex_normals()
+        self.mesh_o3d_poisson = self.mesh_o3d_poisson.filter_smooth_simple(number_of_iterations=10)
+
+        # Build a KDTree for the original point cloud
+        pcd_tree = o3d.geometry.KDTreeFlann(self.pcd_o3d)
+
+        # For each vertex in the smoothed mesh, find the closest point in the original point cloud
+        new_colors = []
+        for vertex in self.mesh_o3d_poisson.vertices:
+            [k, idx, _] = pcd_tree.search_knn_vector_3d(vertex, 1)
+            closest_color = np.asarray(self.pcd_o3d.colors)[idx[0], :]
+            new_colors.append(closest_color)
+
+        # Apply the new colors to the smoothed mesh
+        self.mesh_o3d_poisson.vertex_colors = o3d.utility.Vector3dVector(new_colors)
+
+        pcd_from_mesh = o3d.geometry.PointCloud()
+        pcd_from_mesh.points = self.mesh_o3d_poisson.vertices
+
+        # Perform DBSCAN clustering on the point cloud
+        eps = 0.01  # Adjust this based on your dataset
+        min_points = 25  # Adjust this based on your dataset
+        labels = np.array(pcd_from_mesh.cluster_dbscan(eps=eps, min_points=min_points, print_progress=True))
+
+        # Print the number of clusters and number of points in each cluster
+        max_label = labels.max()
+        print("Number of clusters: " + str(max_label + 1))
+
+        # For each cluster, print number of points
+        for i in range(max_label + 1):
+            print("Number of points in cluster " + str(i) + ": " + str(np.sum(labels == i)))
+
+        # Assuming the extraneous cluster has a distinct label, e.g., 1
+        extraneous_cluster_label = 1
+
+        # Find the indices of points (and hence mesh vertices) that are not part of the extraneous cluster
+        indices_to_keep = np.where(labels != extraneous_cluster_label)[0]
+
+        # Create a new mesh without the extraneous cluster
+        new_mesh = self.mesh_o3d_poisson.select_by_index(indices_to_keep)
+
+        # Recompute normals if needed
+        new_mesh.compute_vertex_normals()
+        self.mesh_o3d_poisson = new_mesh
+
+        def setup_scene_and_view():
+            # Initialize the application and create a window
+            app = o3d.visualization.gui.Application.instance
+            app.initialize()
+            window = app.create_window("Open3D", width=1024, height=768)
+
+            # Create a SceneWidget to display the 3D scene
+            widget = o3d.visualization.gui.SceneWidget()
+            widget.scene = o3d.visualization.rendering.Open3DScene(window.renderer)
+
+            # Define the material properties
+            material = o3d.visualization.rendering.MaterialRecord()
+            material.base_color = [0.7, 0.7, 0.7, 1.0]  # RGBA
+            material.shader = "defaultLit"  # Use a lit shader suitable for lighting effects
+
+            # Add the mesh with the defined material to the scene
+            widget.scene.add_geometry("human_model", new_mesh, material)
+
+            # Setup lighting - using Open3DScene's built-in methods
+            # This example adds a directional light; you can adjust direction, color, and intensity as needed
+            widget.scene.scene.add_directional_light("main_light", [1, 1, 1], [1, 1, 1], 2.0)
+
+            # Add the widget to the window and set up the layout
+            window.add_child(widget)
+
+            # Run the application
+            app.run()
+
+        setup_scene_and_view()
+
+
                
     def rotate_point_cloud(self,rotate):  
         """

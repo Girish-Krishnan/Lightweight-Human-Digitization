@@ -2,111 +2,62 @@ import numpy as np
 import open3d as o3d
 from sklearn.cluster import DBSCAN
 
-pcd = o3d.io.read_point_cloud("27-11.ply")
+mesh = o3d.io.read_triangle_mesh("3_rs-computed.ply")
 
-# Use DBSCAN to remove clusters of points that are not part of the object, but retain the colors of the points that are kept
-points = np.asarray(pcd.points)
-colors = np.asarray(pcd.colors)
-normals_original = np.asarray(pcd.normals) 
+def setup_scene_and_view():
+    # Initialize the application and create a window
+    app = o3d.visualization.gui.Application.instance
+    app.initialize()
+    window = app.create_window("Open3D", width=1024, height=768)
 
-# DBSCAN clustering
-clustering = DBSCAN(eps=0.02, min_samples=10).fit(points)
-labels = clustering.labels_
+    # Create a SceneWidget to display the 3D scene
+    widget = o3d.visualization.gui.SceneWidget()
+    widget.scene = o3d.visualization.rendering.Open3DScene(window.renderer)
 
-# Identify the largest cluster
-unique_labels, counts = np.unique(labels, return_counts=True)
-largest_cluster_label = unique_labels[np.argmax(counts)]
+    # Define the material properties
+    material = o3d.visualization.rendering.MaterialRecord()
+    material.base_color = [0.7, 0.7, 0.7, 1.0]  # RGBA
+    material.shader = "defaultLit"  # Use a lit shader suitable for lighting effects
+    material.base_reflectance = 0.0  # Set a low reflectance to make the object appear matte
+    material.base_roughness = 0.7  # Set a medium roughness to make the object appear matte
+    material.base_metallic = 0.0  # Set a low metallic value to make the object appear matte
+    print(dir(material))
 
-# Filter out noise (small clusters)
-filtered_points = points[labels == largest_cluster_label]
-filtered_colors = colors[labels == largest_cluster_label]
-filtered_normals = normals_original[labels == largest_cluster_label]
+    # Add the mesh with the defined material to the scene
+    widget.scene.add_geometry("human_model", mesh, material)
 
-# Create a new point cloud with filtered data
-filtered_pcd = o3d.geometry.PointCloud()
-filtered_pcd.points = o3d.utility.Vector3dVector(filtered_points)
-filtered_pcd.colors = o3d.utility.Vector3dVector(filtered_colors)
-filtered_pcd.normals = o3d.utility.Vector3dVector(filtered_normals)
+    # Setup lighting - using Open3DScene's built-in methods
+    # This example adds a directional light; you can adjust direction, color, and intensity as needed
+    #widget.scene.scene.add_directional_light("main_light", [1, 1, 1], [1, 1, 1], 2.0)
 
-pcd = filtered_pcd
+    # Add a point light to the scene
+    # widget.scene.scene.add_point_light([0, 0, 0], [1, 1, 1], 1.0, 0.0, True)
 
-# Remove points whose z value is too small
-# pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:, 2] < -0.7)[0])
+    print(dir(widget.scene.scene))
 
-camera_location = np.array([0.0, 0.0, -0.93])
-#camera_location = np.array([0.0, 0.0, 0.0])
+    # Add the widget to the window and set up the layout
+    window.add_child(widget)
 
-pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=1000, max_nn=30))
-# pcd.orient_normals_towards_camera_location(camera_location=camera_location)
-pcd.orient_normals_consistent_tangent_plane(k=20)
+    # For visualization, allow the user to move mouse to rotate, zoom, and pan the view
+    # The widget's camera is accessible and can be manipulated directly
 
-# Reverse the direction of the normals, if the point has z value greater than the camera location
-#pcd.normals = o3d.utility.Vector3dVector(np.asarray(pcd.normals) * -1.0)
+    # Run the application
+    app.run()
 
-points = np.asarray(pcd.points)
-normals = np.asarray(pcd.normals)
+setup_scene_and_view()
+#if not mesh.is_triangle_mesh():
+#    mesh = mesh.triangulate()
+is_watertight = mesh.is_watertight()
 
-# Now that we have the original normals and the computed normals, we can take proportionally from each
-# to get the final normals
-alpha = 0.2
-normals = alpha * normals + (1 - alpha) * normals_original
-pcd.normals = o3d.utility.Vector3dVector(normals)
+# Print the watertight status
+print(f"Mesh is {'watertight' if is_watertight else 'not watertight'}.")
 
-# kdtree = o3d.geometry.KDTreeFlann(pcd)
-# for i in range(len(points)):
-#     _, idx, _ = kdtree.search_knn_vector_3d(pcd.points[i], 10)
-#     normals[i] = np.mean(np.asarray(pcd.normals)[idx], axis=0)
-
-# Create lines for normals from points to (points + normals)
-lines = [[i, i + len(points)] for i in range(len(points))]
-points_with_normals = np.vstack([points, points + 0.02*normals])  # Adjust the 0.02 scalar to scale the length of the normals
-
-# Create a LineSet from the points and lines
-line_set = o3d.geometry.LineSet(
-            points=o3d.utility.Vector3dVector(points_with_normals),
-            lines=o3d.utility.Vector2iVector(lines),
-    )
-
-mesh, mesh_id = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=8, width=0.0, scale=1.0, linear_fit=False)[0:2]
+# Export to STL in binary format
+# Compute the normals of the mesh and orient to consistent tangent plane
 mesh.compute_vertex_normals()
-mesh.orient_triangles()
+mesh.remove_degenerate_triangles()
+mesh.remove_duplicated_triangles()
+mesh.remove_duplicated_vertices()
+o3d.io.write_triangle_mesh("output_file_path.stl", mesh, write_ascii=False)
 
-# Run DBSCAN on the mesh to remove noise, similar to what we did with the point cloud
-points = np.asarray(mesh.vertices)
-normals_original = np.asarray(mesh.vertex_normals)
-colors = np.asarray(mesh.vertex_colors)
-
-# DBSCAN clustering
-clustering = DBSCAN(eps=0.02, min_samples=30).fit(points)
-labels = clustering.labels_
-
-# Identify the largest cluster
-unique_labels, counts = np.unique(labels, return_counts=True)
-largest_cluster_label = unique_labels[np.argmax(counts)]
-
-# Print the number of clusters and the points in each cluster
-print("Number of clusters: " + str(len(unique_labels)))
-for i in range(len(unique_labels)):
-    print("Cluster " + str(i) + ": " + str(counts[i]))
-
-# Filter out noise (small clusters)
-filtered_points = points[labels == largest_cluster_label]
-filtered_colors = colors[labels == largest_cluster_label]
-filtered_normals = normals_original[labels == largest_cluster_label]
-
-# Print the number of points in the filtered point cloud
-print("Number of points in filtered point cloud: " + str(len(filtered_points)))
-
-# Create a new point cloud with filtered data
-filtered_pcd = o3d.geometry.PointCloud()
-filtered_pcd.points = o3d.utility.Vector3dVector(filtered_points)
-filtered_pcd.colors = o3d.utility.Vector3dVector(filtered_colors)
-filtered_pcd.normals = o3d.utility.Vector3dVector(filtered_normals)
-
-mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(filtered_pcd, depth=8, width=0.0, scale=1.0, linear_fit=False)[0]
-
-# Visualize the point cloud and normals
-o3d.visualization.draw_geometries([pcd, line_set, o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=camera_location)])
-o3d.visualization.draw_geometries([pcd, line_set])
-o3d.visualization.draw_geometries([mesh])
-o3d.io.write_triangle_mesh("realsense_normals.ply", mesh)
+print("Mesh exported to STL format.")
