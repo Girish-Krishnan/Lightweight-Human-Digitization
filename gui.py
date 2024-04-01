@@ -190,7 +190,8 @@ tk.Radiobutton(root, text="Yes", variable=data_reset, value=1).grid(row=1, colum
 tk.Radiobutton(root, text="No", variable=data_reset, value=0).grid(row=2, column=1, sticky="w")
 
 tk.Label(root, text="Select Directory Containing Images:").grid(row=3, column=0, sticky="e")
-tk.Button(root, text="Select Directory (default: ./Capture_Data)", command=select_output_dir).grid(row=3, column=1, sticky="ew", padx=5, pady=2)
+tk.Button(root, text="Select Directory", command=select_output_dir).grid(row=3, column=1, sticky="ew", padx=5, pady=2)
+tk.Label(root, textvariable=output_dir).grid(row=3, column=2, sticky="ew")
 
 # tk.Label(root, text="Resolution:").grid(row=4, column=0, sticky="e")
 # resolution_frame = tk.Frame(root)
@@ -214,6 +215,7 @@ tk.Entry(root, textvariable=num_captures).grid(row=7, column=1, sticky="ew", pad
 
 tk.Label(root, text="Calibration Config File (JSON):").grid(row=8, column=0, sticky="e")
 tk.Button(root, text="Select File", command=select_config_file).grid(row=8, column=1, sticky="ew", padx=5, pady=2)
+tk.Label(root, textvariable=config_file).grid(row=8, column=2, sticky="ew")
 
 tk.Label(root, text="Path to Save Point Cloud:").grid(row=9, column=0, sticky="e")
 output_entry = tk.Entry(root, textvariable=output_file)
