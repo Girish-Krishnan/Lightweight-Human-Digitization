@@ -374,7 +374,7 @@ class Combiner:
 
             # Setup lighting - using Open3DScene's built-in methods
             # This example adds a directional light; you can adjust direction, color, and intensity as needed
-            widget.scene.scene.add_directional_light("main_light", [1, 1, 1], [1, 1, 1], 2.0)
+            # widget.scene.scene.add_directional_light("main_light", np.array([1, 1, 1]).reshape((3,1)), np.array([1, 1, 1]).reshape((3,1)), 2.0)
 
             # Add the widget to the window and set up the layout
             window.add_child(widget)
