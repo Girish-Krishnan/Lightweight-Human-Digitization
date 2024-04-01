@@ -185,13 +185,13 @@ root.grid_columnconfigure(1, weight=1)
 #tk.Label(root, text="Hardware Reset:").grid(row=0, column=0, sticky="e")
 tk.Button(root, text="Reset Camera Hardware", command=hardware_reset).grid(row=0, column=0, sticky="ew", padx=5, pady=2, columnspan=2)
 
-tk.Label(root, text="Clear Existing Capture Data?:").grid(row=1, column=0, sticky="e")
-tk.Radiobutton(root, text="Yes", variable=data_reset, value=1).grid(row=1, column=1, sticky="w")
-tk.Radiobutton(root, text="No", variable=data_reset, value=0).grid(row=2, column=1, sticky="w")
+tk.Label(root, text="Select Directory to Save Captures:").grid(row=1, column=0, sticky="e")
+tk.Button(root, text="Select Directory", command=select_output_dir).grid(row=1, column=1, sticky="ew", padx=5, pady=2)
+tk.Label(root, textvariable=output_dir).grid(row=2, column=0, columnspan=2, sticky="ew")
 
-tk.Label(root, text="Select Directory Containing Images:").grid(row=3, column=0, sticky="e")
-tk.Button(root, text="Select Directory", command=select_output_dir).grid(row=3, column=1, sticky="ew", padx=5, pady=2)
-tk.Label(root, textvariable=output_dir).grid(row=4, column=0, columnspan=2, sticky="ew")
+tk.Label(root, text="Clear Existing Capture Data?:").grid(row=3, column=0, sticky="e")
+tk.Radiobutton(root, text="Yes", variable=data_reset, value=1).grid(row=4, column=1, sticky="w")
+tk.Radiobutton(root, text="No", variable=data_reset, value=0).grid(row=3, column=1, sticky="w")
 
 # tk.Label(root, text="Resolution:").grid(row=4, column=0, sticky="e")
 # resolution_frame = tk.Frame(root)
@@ -232,11 +232,11 @@ mesh_entry = tk.Entry(root, textvariable=mesh_file)
 mesh_entry.grid(row=13, column=1, sticky="ew")
 tk.Button(root, text="Browse", command=select_directory_for_mesh_file).grid(row=13, column=2, padx=5)
 
-tk.Label(root, text="Save Individual PCDs:").grid(row=14, column=0, sticky="e")
+tk.Label(root, text="Save Individual PCDs?:").grid(row=14, column=0, sticky="e")
 tk.Radiobutton(root, text="Yes", variable=save_individual, value=1).grid(row=14, column=1, sticky="w")
 tk.Radiobutton(root, text="No", variable=save_individual, value=0).grid(row=15, column=1, sticky="w")
 
-tk.Label(root, text="Visualize Resulting PCD:").grid(row=16, column=0, sticky="e")
+tk.Label(root, text="Visualize Resulting Mesh?:").grid(row=16, column=0, sticky="e")
 tk.Radiobutton(root, text="Yes", variable=visualize, value=1).grid(row=16, column=1, sticky="w")
 tk.Radiobutton(root, text="No", variable=visualize, value=0).grid(row=17, column=1, sticky="w")
 
