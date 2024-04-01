@@ -342,7 +342,7 @@ class Combiner:
             print("Number of points in cluster " + str(i) + ": " + str(np.sum(labels == i)))
 
         # Assuming the extraneous cluster is the cluster with the fewest points
-        extraneous_cluster_label = np.argmin(np.bincount(labels))
+        extraneous_cluster_label = np.argmin(np.bincount(labels.flatten()))
 
         # Find the indices of points (and hence mesh vertices) that are not part of the extraneous cluster
         indices_to_keep = np.where(labels != extraneous_cluster_label)[0]
@@ -590,7 +590,7 @@ class SynchronousCapture:
         """
         Capture a single frame from all cameras simultaneously
         """
-
+        print("[RealSense] Capturing frames")
         for j in tqdm(range(capture_count)):
             while True:
                 with concurrent.futures.ThreadPoolExecutor() as executor:

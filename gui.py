@@ -191,7 +191,7 @@ tk.Radiobutton(root, text="No", variable=data_reset, value=0).grid(row=2, column
 
 tk.Label(root, text="Select Directory Containing Images:").grid(row=3, column=0, sticky="e")
 tk.Button(root, text="Select Directory", command=select_output_dir).grid(row=3, column=1, sticky="ew", padx=5, pady=2)
-tk.Label(root, textvariable=output_dir).grid(row=3, column=2, sticky="ew")
+tk.Label(root, textvariable=output_dir).grid(row=4, column=0, columnspan=2, sticky="ew")
 
 # tk.Label(root, text="Resolution:").grid(row=4, column=0, sticky="e")
 # resolution_frame = tk.Frame(root)
@@ -199,47 +199,47 @@ tk.Label(root, textvariable=output_dir).grid(row=3, column=2, sticky="ew")
 # tk.OptionMenu(resolution_frame, height, 480, 720).pack(side="right")
 # resolution_frame.grid(row=4, column=1, sticky="ew")
 
-tk.Label(root, text="Resolution:").grid(row=4, column=0, sticky="e")
+tk.Label(root, text="Resolution:").grid(row=5, column=0, sticky="e")
 resolutions = ["640x480", "1280x720"]
-tk.OptionMenu(root, resolution, *resolutions).grid(row=4, column=1, sticky="ew")
+tk.OptionMenu(root, resolution, *resolutions).grid(row=5, column=1, sticky="ew")
 
 
-tk.Label(root, text="FPS:").grid(row=5, column=0, sticky="e")
-tk.OptionMenu(root, fps, 30, 60).grid(row=5, column=1, sticky="ew")
+tk.Label(root, text="FPS:").grid(row=6, column=0, sticky="e")
+tk.OptionMenu(root, fps, 30, 60).grid(row=6, column=1, sticky="ew")
 
-tk.Label(root, text="Warmup Frames:").grid(row=6, column=0, sticky="e")
-tk.Entry(root, textvariable=warmup_frames).grid(row=6, column=1, sticky="ew", padx=5, pady=2)
+tk.Label(root, text="Warmup Frames:").grid(row=7, column=0, sticky="e")
+tk.Entry(root, textvariable=warmup_frames).grid(row=7, column=1, sticky="ew", padx=5, pady=2)
 
-tk.Label(root, text="Number of Captures:").grid(row=7, column=0, sticky="e")
-tk.Entry(root, textvariable=num_captures).grid(row=7, column=1, sticky="ew", padx=5, pady=2)
+tk.Label(root, text="Number of Captures:").grid(row=8, column=0, sticky="e")
+tk.Entry(root, textvariable=num_captures).grid(row=8, column=1, sticky="ew", padx=5, pady=2)
 
-tk.Label(root, text="Calibration Config File (JSON):").grid(row=8, column=0, sticky="e")
-tk.Button(root, text="Select File", command=select_config_file).grid(row=8, column=1, sticky="ew", padx=5, pady=2)
-tk.Label(root, textvariable=config_file).grid(row=8, column=2, sticky="ew")
+tk.Label(root, text="Calibration Config File (JSON):").grid(row=9, column=0, sticky="e")
+tk.Button(root, text="Select File", command=select_config_file).grid(row=9, column=1, sticky="ew", padx=5, pady=2)
+tk.Label(root, textvariable=config_file).grid(row=10, column=0, columnspan=2, sticky="ew")
 
-tk.Label(root, text="Path to Save Point Cloud:").grid(row=9, column=0, sticky="e")
+tk.Label(root, text="Path to Save Point Cloud:").grid(row=11, column=0, sticky="e")
 output_entry = tk.Entry(root, textvariable=output_file)
-output_entry.grid(row=9, column=1, sticky="ew")
-tk.Button(root, text="Browse", command=select_directory_for_output_file).grid(row=9, column=2, padx=5)
+output_entry.grid(row=11, column=1, sticky="ew")
+tk.Button(root, text="Browse", command=select_directory_for_output_file).grid(row=11, column=2, padx=5)
 
-tk.Label(root, text="Path to Save Odometry Log:").grid(row=10, column=0, sticky="e")
+tk.Label(root, text="Path to Save Odometry Log:").grid(row=12, column=0, sticky="e")
 odom_entry = tk.Entry(root, textvariable=odom_file)
-odom_entry.grid(row=10, column=1, sticky="ew")
-tk.Button(root, text="Browse", command=select_directory_for_odom_file).grid(row=10, column=2, padx=5)
+odom_entry.grid(row=12, column=1, sticky="ew")
+tk.Button(root, text="Browse", command=select_directory_for_odom_file).grid(row=12, column=2, padx=5)
 
-tk.Label(root, text="Path to Save Mesh:").grid(row=11, column=0, sticky="e")
+tk.Label(root, text="Path to Save Mesh:").grid(row=13, column=0, sticky="e")
 mesh_entry = tk.Entry(root, textvariable=mesh_file)
-mesh_entry.grid(row=11, column=1, sticky="ew")
-tk.Button(root, text="Browse", command=select_directory_for_mesh_file).grid(row=11, column=2, padx=5)
+mesh_entry.grid(row=13, column=1, sticky="ew")
+tk.Button(root, text="Browse", command=select_directory_for_mesh_file).grid(row=13, column=2, padx=5)
 
-tk.Label(root, text="Save Individual PCDs:").grid(row=12, column=0, sticky="e")
-tk.Radiobutton(root, text="Yes", variable=save_individual, value=1).grid(row=12, column=1, sticky="w")
-tk.Radiobutton(root, text="No", variable=save_individual, value=0).grid(row=13, column=1, sticky="w")
+tk.Label(root, text="Save Individual PCDs:").grid(row=14, column=0, sticky="e")
+tk.Radiobutton(root, text="Yes", variable=save_individual, value=1).grid(row=14, column=1, sticky="w")
+tk.Radiobutton(root, text="No", variable=save_individual, value=0).grid(row=15, column=1, sticky="w")
 
-tk.Label(root, text="Visualize Resulting PCD:").grid(row=14, column=0, sticky="e")
-tk.Radiobutton(root, text="Yes", variable=visualize, value=1).grid(row=14, column=1, sticky="w")
-tk.Radiobutton(root, text="No", variable=visualize, value=0).grid(row=15, column=1, sticky="w")
+tk.Label(root, text="Visualize Resulting PCD:").grid(row=16, column=0, sticky="e")
+tk.Radiobutton(root, text="Yes", variable=visualize, value=1).grid(row=16, column=1, sticky="w")
+tk.Radiobutton(root, text="No", variable=visualize, value=0).grid(row=17, column=1, sticky="w")
 
-tk.Button(root, text="Submit", command=submit).grid(row=16, column=0,columnspan=2, pady=4,  sticky="ew")
+tk.Button(root, text="Submit", command=submit).grid(row=18, column=0,columnspan=2, pady=4,  sticky="ew")
 
 root.mainloop()
