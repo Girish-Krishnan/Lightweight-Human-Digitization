@@ -12,8 +12,6 @@ try:
     import time
     from PIL import Image, ImageFilter
     import pyrealsense2 as rs
-    
-    
     import matplotlib.pyplot as plt
 except ImportError as e:
     print("Warning: Unable to import one or more modules due to the following error: ", e)
@@ -53,7 +51,8 @@ class Camera:
         :param image: The image
         :param depth_map: The depth map
         """
-        self.image = image
+    
+        self.image = white_balance(image)
         self.depth_map = depth_map
         self.mesh = o3d.io.read_triangle_mesh(f"{self.data_dir}/{self.serial_number}/reconstruction_images/normal_" + self.serial_number + ".ply")
         self.normals = np.asarray(self.mesh.vertex_normals)
@@ -231,6 +230,9 @@ def remove_noise(img):
     cv.drawContours(output_img, [largest_contour], 0, 255, thickness=cv.FILLED)
     return output_img
     
+def white_balance(img):
+    result = cv.xphoto.createSimpleWB().balanceWhite(img)
+    return result
 
 """
 Classes for 3D reconstruction, combining PCDs
@@ -256,6 +258,16 @@ class Combiner:
             rotate.append(self.cam_array[i].rotation)
             self.cam_array[i].rotate_point_cloud(rotate[i])
             self.cam_array[i].translate_point_cloud(self.cam_array[i].translation)
+
+        # Before building a complete point cloud, find overlapping regions and adjust colors
+        # for i in range(1, len(self.cam_array)):
+        #     overlap_pcd = find_overlapping_regions(self.cam_array[0].pcd_o3d, self.cam_array[i].pcd_o3d)
+        #     self.cam_array[i].pcd_o3d = adjust_colors_in_overlap(self.cam_array[i].pcd_o3d, overlap_pcd)
+
+        # for i in range(1, len(self.cam_array)):
+        #     self.cam_array[i].pcd = np.asarray(self.cam_array[i].pcd_o3d.points)
+        #     self.cam_array[i].colors = np.asarray(self.cam_array[i].pcd_o3d.colors)
+        #     self.cam_array[i].filtered_normals = np.asarray(self.cam_array[i].pcd_o3d.normals)
 
         self.pcd = np.concatenate(tuple([i.pcd for i in self.cam_array]),axis=0)
         self.normals = np.concatenate(tuple([i.filtered_normals for i in self.cam_array]),axis=0)
@@ -306,6 +318,8 @@ class Combiner:
         self.pcd_o3d.estimate_normals()
         self.pcd_o3d.orient_normals_consistent_tangent_plane(k=20)
 
+        o3d.visualization.draw_geometries([self.pcd_o3d])
+
         # Create mesh using Poisson reconstruction and smooth it
         self.mesh_o3d_poisson, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
             self.pcd_o3d, depth=8, width=0.0, scale=1.0, linear_fit=False)
@@ -338,11 +352,19 @@ class Combiner:
         #print("Number of clusters: " + str(max_label + 1))
 
         # For each cluster, print number of points
-        # for i in range(max_label + 1):
-        #     print("Number of points in cluster " + str(i) + ": " + str(np.sum(labels == i)))
+        for i in range(max_label + 1):
+            print("Number of points in cluster " + str(i) + ": " + str(np.sum(labels == i)))
 
-        # Assuming the extraneous cluster is the cluster with the fewest points
-        extraneous_cluster_label = 3
+        # Find the cluster label with the least number of points
+        least_points = np.inf
+        extraneous_cluster_label = -1
+        for i in range(max_label + 1):
+            num_points = np.sum(labels == i)
+            if num_points < least_points:
+                least_points = num_points
+                extraneous_cluster_label = i
+
+        print("Extraneous cluster label: " + str(extraneous_cluster_label))
 
         # Find the indices of points (and hence mesh vertices) that are not part of the extraneous cluster
         indices_to_keep = np.where(labels != extraneous_cluster_label)[0]
@@ -467,6 +489,30 @@ class Combiner:
 
             self.cam_array[i].rotation = np.matmul(self.cam_array[i].rotation,np.array(reg_p2p.transformation[:3,:3]))
             self.cam_array[i].translation += np.array(reg_p2p.transformation[:3,3])
+
+"""
+Further point cloud processing
+"""
+
+def find_overlapping_regions(pcd1, pcd2, voxel_size=0.01):
+    pcd1_down = pcd1.voxel_down_sample(voxel_size)
+    pcd2_down = pcd2.voxel_down_sample(voxel_size)
+    distances = pcd1_down.compute_point_cloud_distance(pcd2_down)
+    indices = np.where(np.array(distances) < voxel_size)[0]
+    overlap_pcd1 = pcd1_down.select_by_index(indices)
+    return overlap_pcd1
+
+def adjust_colors_in_overlap(pcd, overlap_pcd, voxel_size=0.01):
+    overlap_colors = np.asarray(overlap_pcd.colors)
+    avg_color = np.mean(overlap_colors, axis=0)
+    
+    pcd_colors = np.asarray(pcd.colors)
+    distances = pcd.compute_point_cloud_distance(overlap_pcd)
+    indices = np.where(np.array(distances) < voxel_size)[0]
+    
+    pcd_colors[indices] = avg_color
+    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
+    return pcd
 
 """
 Classes for scalable capturing
