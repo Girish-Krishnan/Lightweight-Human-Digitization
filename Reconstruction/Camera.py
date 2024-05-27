@@ -52,7 +52,7 @@ class Camera:
         :param depth_map: The depth map
         """
     
-        self.image = white_balance(image)
+        self.image = image
         self.depth_map = depth_map
         self.mesh = o3d.io.read_triangle_mesh(f"{self.data_dir}/{self.serial_number}/reconstruction_images/normal_" + self.serial_number + ".ply")
         self.normals = np.asarray(self.mesh.vertex_normals)
@@ -367,10 +367,14 @@ class Combiner:
         print("Extraneous cluster label: " + str(extraneous_cluster_label))
 
         # Find the indices of points (and hence mesh vertices) that are not part of the extraneous cluster
-        indices_to_keep = np.where(labels != extraneous_cluster_label)[0]
+        if max_label != 0:
+            indices_to_keep = np.where(labels != extraneous_cluster_label)[0]
 
-        # Create a new mesh without the extraneous cluster
-        new_mesh = self.mesh_o3d_poisson.select_by_index(indices_to_keep)
+            # Create a new mesh without the extraneous cluster
+            new_mesh = self.mesh_o3d_poisson.select_by_index(indices_to_keep)
+
+        else:
+            new_mesh = self.mesh_o3d_poisson
 
         # Recompute normals if needed
         new_mesh.compute_vertex_normals()
