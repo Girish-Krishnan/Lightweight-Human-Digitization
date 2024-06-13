@@ -135,7 +135,7 @@ combiner = Camera.Combiner(cam)
 combiner.combine()
 o3d.io.write_point_cloud(args.output_file, combiner.pcd_o3d)
 #o3d.io.write_triangle_mesh(args.mesh_file, combiner.mesh_o3d)
-o3d.io.write_triangle_mesh(args.mesh_file.split('.')[0] + '-computed.ply', combiner.mesh_o3d_poisson)
+o3d.io.write_triangle_mesh(args.mesh_file.split('/')[1] + '-mesh.ply', combiner.mesh_o3d_poisson)
 
 # if args.visualize:
 #     combiner.visualize()
