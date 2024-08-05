@@ -54,8 +54,11 @@ class Camera:
     
         self.image = image
         self.depth_map = depth_map
-        self.mesh = o3d.io.read_triangle_mesh(f"{self.data_dir}/{self.serial_number}/reconstruction_images/normal_" + self.serial_number + ".ply")
-        self.normals = np.asarray(self.mesh.vertex_normals)
+        if os.path.exists(f"{self.data_dir}/{self.serial_number}/reconstruction_images/normal_" + self.serial_number + ".ply"):
+            self.mesh = o3d.io.read_triangle_mesh(f"{self.data_dir}/{self.serial_number}/reconstruction_images/normal_" + self.serial_number + ".ply")
+            self.normals = np.asarray(self.mesh.vertex_normals)
+        else:
+            print("Warning: No normals found for camera " + self.serial_number)
         self.post_process()
         
     def display(self):
@@ -128,15 +131,23 @@ class Camera:
         self.pcd = np.asarray(self.pcd_o3d.points)
         self.colors = np.asarray(self.pcd_o3d.colors)
 
-        filtered_normals = np.asarray(self.normals)[ind]
+        try:
+            filtered_normals = np.asarray(self.normals)[ind]
+        except:
+            filtered_normals = None
 
         mesh = o3d.geometry.TriangleMesh()
         mesh.vertices = o3d.utility.Vector3dVector(self.pcd)
         mesh.vertex_colors = o3d.utility.Vector3dVector(self.colors)
-        mesh.vertex_normals = o3d.utility.Vector3dVector(filtered_normals)
 
-        self.mesh = mesh
-        self.filtered_normals = filtered_normals
+        if filtered_normals is not None:
+            mesh.vertex_normals = o3d.utility.Vector3dVector(filtered_normals)
+            self.filtered_normals = filtered_normals
+        else:
+            mesh.compute_vertex_normals()
+            self.filtered_normals = np.asarray(mesh.vertex_normals)
+
+        self.mesh = mesh        
 
 
     def translate_point_cloud(self,vector):
