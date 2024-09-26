@@ -270,6 +270,13 @@ class Combiner:
             self.cam_array[i].rotate_point_cloud(rotate[i])
             self.cam_array[i].translate_point_cloud(self.cam_array[i].translation)
 
+        # Now, save each individual point cloud to a file
+        # for i in range(len(self.cam_array)):
+        #     o3d_pcd = o3d.geometry.PointCloud()
+        #     o3d_pcd.points = o3d.utility.Vector3dVector(self.cam_array[i].pcd)
+        #     o3d_pcd.colors = o3d.utility.Vector3dVector(self.cam_array[i].colors)
+        #     o3d.io.write_point_cloud(f"{self.cam_array[i].data_dir}/{self.cam_array[i].serial_number}/individual_pcd_trans.ply", o3d_pcd)
+
         # Before building a complete point cloud, find overlapping regions and adjust colors
         # for i in range(1, len(self.cam_array)):
         #     overlap_pcd = find_overlapping_regions(self.cam_array[0].pcd_o3d, self.cam_array[i].pcd_o3d)
@@ -411,7 +418,7 @@ class Combiner:
 
             # Setup lighting - using Open3DScene's built-in methods
             # This example adds a directional light; you can adjust direction, color, and intensity as needed
-            # widget.scene.scene.add_directional_light("main_light", np.array([1, 1, 1]).reshape((3,1)), np.array([1, 1, 1]).reshape((3,1)), 2.0)
+            widget.scene.scene.add_directional_light("main_light", np.array([1.0, 1.0, 1.0]).reshape((3,1)), np.array([1.0, 1.0, 1.0]).reshape((3,1)), 2.0, False)
 
             # Add the widget to the window and set up the layout
             window.add_child(widget)
