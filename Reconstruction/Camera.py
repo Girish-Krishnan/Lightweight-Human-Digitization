@@ -621,12 +621,11 @@ class RealSenseCamera:
             cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth.png", depth_colormap)
 
         else:
-            # Find the number of files in the directory
-            num_files = len([f for f in os.listdir(root_directory + "/" + self.serial_number + "/" + sub_directory) if os.path.isfile(os.path.join(root_directory + self.serial_number + "/" + sub_directory, f))])
-            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/image_" + str(num_files//4) + ".jpg", color_image)
-            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/raw_image_" + str(num_files//4) + ".jpg", raw_color_image)
-            np.save(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth_map_" + str(num_files//4) + ".npy", depth_image)
-            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth_" + str(num_files//4) + ".png", depth_colormap)
+            num_npy_files = len([f for f in os.listdir(root_directory + "/" + self.serial_number + "/" + sub_directory) if f.endswith('.npy')])
+            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/image_" + str(num_npy_files+1) + ".jpg", color_image)
+            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/raw_image_" + str(num_npy_files+1) + ".jpg", raw_color_image)
+            np.save(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth_map_" + str(num_npy_files+1) + ".npy", depth_image)
+            cv.imwrite(root_directory + '/' + self.serial_number + "/" + sub_directory + "/depth_" + str(num_npy_files+1) + ".png", depth_colormap)
 
 
 class SynchronousCapture:
@@ -658,6 +657,11 @@ class SynchronousCapture:
         """
         Capture a single frame from all cameras simultaneously
         """
+
+        # If there exists a timestamps.txt file, delete it
+        if os.path.exists(f"{self.output_dir}/timestamps.txt"):
+            os.remove(f"{self.output_dir}/timestamps.txt")
+            
         print("[RealSense] Capturing frames")
         for j in tqdm(range(capture_count)):
             while True:
@@ -675,15 +679,18 @@ class SynchronousCapture:
 
                 if all(results):
                     if save_captures:
-                        self.save()
+                        self.save(timestamp=end)
                 
                 break
 
-    def save(self):
+    def save(self, timestamp=None):
         """
         Save frames from all cameras simultaneously
         """
         [camera.save_frames(root_directory=self.output_dir,sub_directory=self.sub_dir,numbered=self.numbered) for camera in self.cameras]
+        if timestamp:
+            with open(f"{self.output_dir}/timestamps.txt", "a") as f:
+                f.write(str(timestamp) + "\n")
 
     def stop(self):
         """
