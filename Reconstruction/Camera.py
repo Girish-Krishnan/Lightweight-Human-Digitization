@@ -683,6 +683,55 @@ class SynchronousCapture:
                 
                 break
 
+    def capture_fast(self, capture_count, verbose=False, save_captures=False, process_frames=True):
+        """
+        Capture a single frame from all cameras simultaneously and process/save after the capturing is done.
+        """
+        
+        # If there exists a timestamps.txt file, delete it
+        if os.path.exists(f"{self.output_dir}/timestamps.txt"):
+            os.remove(f"{self.output_dir}/timestamps.txt")
+            
+        print("[RealSense] Capturing frames")
+        
+        # List to store captured frames and their timestamps
+        all_results = []
+        
+        # Capture frames
+        for j in tqdm(range(capture_count)):
+            while True:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    start = time.time()
+                    futures = [executor.submit(camera.get_frames) for camera in self.cameras]
+                    concurrent.futures.wait(futures)
+                    results = [future.result() for future in futures]
+                    end = time.time()
+
+                    if verbose:
+                        print("Time taken to capture frames: " + str(end - start))
+
+                if all(results):
+                    # Store captured frames and their timestamps
+                    all_results.append((results, end))
+                break
+
+        print("[RealSense] Capturing complete.")
+        
+        # Process and save frames after capturing all frames
+        if process_frames or save_captures:
+            print("[RealSense] Processing and saving frames")
+            for results, timestamp in all_results:
+                if process_frames:
+                    # Process the frames
+                    [camera.process_frames(result) for camera, result in zip(self.cameras, results)]
+                
+                if save_captures:
+                    # Save the captures
+                    self.save(timestamp=timestamp)
+        
+        print("[RealSense] Processing and saving complete.")
+
+
     def save(self, timestamp=None):
         """
         Save frames from all cameras simultaneously

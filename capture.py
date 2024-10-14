@@ -114,7 +114,7 @@ if __name__ == '__main__':
                                           numbered=numbered
                                           )
     
-    cam_array.capture(args.num_captures, save_captures=True, process_frames=True)
+    cam_array.capture_fast(args.num_captures, save_captures=True, process_frames=True)
 
     # Stop capturing
     cam_array.stop()
