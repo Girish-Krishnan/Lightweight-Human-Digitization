@@ -426,7 +426,7 @@ class Combiner:
             # Run the application
             app.run()
 
-        setup_scene_and_view()
+        #setup_scene_and_view()
 
 
                
