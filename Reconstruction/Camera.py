@@ -590,7 +590,7 @@ class RealSenseCamera:
 
         """    
         aligned_frames = rs.align(rs.stream.depth).process(frames)
-        self.ply.process(aligned_frames)
+        #self.ply.process(aligned_frames)
 
         # Get aligned frames
         self.aligned_depth_frame = aligned_frames.get_depth_frame()
