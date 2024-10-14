@@ -21,6 +21,7 @@ parser.add_argument('--save_individual', action='store_true')
 parser.add_argument('--visualize', action='store_true')
 parser.add_argument('--odom_file', type=str, default='./odometry.log')
 parser.add_argument('--mesh_file', type=str, default='./mesh_combined.ply')
+parser.add_argument('--frame_number', type=int, default=1)
 args = parser.parse_args()
 
 """
@@ -125,8 +126,8 @@ for i in range(len(cams_list)):
     write_to_file(args.odom_file, 1, r_mat, t)
 
 for i in range(len(cams_list)):
-    cam[i].add_image(cv.imread(args.data_dir + "/" + cams_list[i] + RECONST_IMAGES_DIR + "/image.jpg"),
-                     np.load(args.data_dir + "/" + cams_list[i] + RECONST_IMAGES_DIR + "/depth_map.npy") * 0.001)
+    cam[i].add_image(cv.imread(args.data_dir + "/" + cams_list[i] + RECONST_IMAGES_DIR + f"/image_{args.frame_number}.jpg"),
+                     np.load(args.data_dir + "/" + cams_list[i] + RECONST_IMAGES_DIR + f"/depth_map_{args.frame_number}.npy") * 0.001)
     cam[i].point_cloud()
     if args.save_individual:
         o3d.io.write_point_cloud(args.data_dir + "/" + cams_list[i] + '/individual_pcd' + ".ply", cam[i].pcd_o3d)
