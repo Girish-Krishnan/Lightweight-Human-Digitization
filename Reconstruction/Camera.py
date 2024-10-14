@@ -731,6 +731,66 @@ class SynchronousCapture:
         
         print("[RealSense] Processing and saving complete.")
 
+    def capture_buffer(self, capture_count, verbose=False, save_captures=False, process_frames=True, buffer_size=10):
+        """
+        Capture frames and process/save them in batches to avoid using too much memory.
+        """
+        
+        # If there exists a timestamps.txt file, delete it
+        if os.path.exists(f"{self.output_dir}/timestamps.txt"):
+            os.remove(f"{self.output_dir}/timestamps.txt")
+            
+        print("[RealSense] Capturing frames")
+        
+        # List to store captured frames in a buffer
+        buffer_results = []
+        
+        # Capture frames
+        for j in tqdm(range(capture_count)):
+            while True:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    start = time.time()
+                    futures = [executor.submit(camera.get_frames) for camera in self.cameras]
+                    concurrent.futures.wait(futures)
+                    results = [future.result() for future in futures]
+                    end = time.time()
+
+                    if verbose:
+                        print("Time taken to capture frames: " + str(end - start))
+
+                if all(results):
+                    # Store captured frames and their timestamps in buffer
+                    buffer_results.append((results, end))
+                    
+                    # Check if buffer is full, then process and save
+                    if len(buffer_results) >= buffer_size:
+                        print("[RealSense] Buffer full, processing and saving frames.")
+                        self._process_and_save_buffer(buffer_results, process_frames, save_captures)
+                        buffer_results = []  # Clear buffer after processing
+                        
+                break
+
+        # Process any remaining frames in the buffer after capturing
+        if buffer_results:
+            print("[RealSense] Processing and saving remaining frames.")
+            self._process_and_save_buffer(buffer_results, process_frames, save_captures)
+
+        print("[RealSense] Capture complete.")
+        
+    def _process_and_save_buffer(self, buffer_results, process_frames, save_captures):
+        """
+        Process and save a batch of frames from the buffer.
+        """
+        for results, timestamp in buffer_results:
+            if process_frames:
+                # Process the frames
+                [camera.process_frames(result) for camera, result in zip(self.cameras, results)]
+            
+            if save_captures:
+                # Save the captures
+                self.save(timestamp=timestamp)
+
+
 
     def save(self, timestamp=None):
         """
