@@ -336,7 +336,7 @@ class Combiner:
         self.pcd_o3d.estimate_normals()
         self.pcd_o3d.orient_normals_consistent_tangent_plane(k=20)
 
-        o3d.visualization.draw_geometries([self.pcd_o3d])
+        #o3d.visualization.draw_geometries([self.pcd_o3d])
 
         # Create mesh using Poisson reconstruction and smooth it
         self.mesh_o3d_poisson, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
