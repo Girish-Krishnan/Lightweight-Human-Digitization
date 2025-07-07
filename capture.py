@@ -1,5 +1,5 @@
 # Import required modules
-from Reconstruction import Camera
+import reconstruction
 import pyrealsense2 as rs
 import os
 import shutil
@@ -104,7 +104,7 @@ if __name__ == '__main__':
         exit(-1)
 
     # Perform synchronous capture
-    cam_array = Camera.SynchronousCapture(SERIAL_NUMBERS, 
+    cam_array = reconstruction.SynchronousCapture(SERIAL_NUMBERS, 
                                           width=args.width, 
                                           height=args.height, 
                                           fps=args.fps, 

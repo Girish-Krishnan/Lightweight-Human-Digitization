@@ -14,7 +14,7 @@ from scipy.optimize import least_squares
 import traceback
 import argparse
 import matplotlib.pyplot as plt
-from trajectory_utils.trajectory_io import *
+from trajectory_io import *
 
 
 RECONST_IMAGES_DIR = '/reconstruction_images'

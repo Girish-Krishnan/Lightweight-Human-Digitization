@@ -1,14 +1,14 @@
 """
 IMPORTS
 """
-from Reconstruction import Camera
+import reconstruction
 import numpy as np
 import json
 import cv2 as cv
 import open3d as o3d
 import sys
 import argparse
-from trajectory_utils.trajectory_io import *
+from trajectory_io import *
 
 RECONST_IMAGES_DIR = '/reconstruction_images'
 CALIB_IMAGES_DIR = '/calibration_images'
@@ -96,7 +96,7 @@ for i in range(len(cams_list)):
                     [0.0, 1.0, 0.0],
                     [0.0, 0.0, 1.0]]
         translation = [0.0, 0.0, 0.0]
-        cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
+        cam.append(reconstruction.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
                                  CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation, cams_list[i], args.data_dir))
         path = find_path_to_cam_0(cams_list[i])
 
@@ -116,7 +116,7 @@ for i in range(len(cams_list)):
         #print("Final rotation: \n", rotation)
         #print("Final translation: ", translation)
         #print("___")
-        cam.append(Camera.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
+        cam.append(reconstruction.Camera(CAM_DATA[i]["intrinsics"]["img_size"], CAM_DATA[i]["intrinsics"]["ir_focal_length"],
                                  CAM_DATA[i]["intrinsics"]["ir_img_center"], rotation, translation, cams_list[i], args.data_dir))
 
     trans = np.vstack( (np.hstack((np.array(rotation), np.array(translation).reshape(-1,1))), [0,0,0,1]) )
@@ -132,7 +132,7 @@ for i in range(len(cams_list)):
     if args.save_individual:
         o3d.io.write_point_cloud(args.data_dir + "/" + cams_list[i] + '/individual_pcd' + ".ply", cam[i].pcd_o3d)
 
-combiner = Camera.Combiner(cam)
+combiner = reconstruction.Combiner(cam)
 combiner.combine()
 o3d.io.write_point_cloud(args.output_file, combiner.pcd_o3d)
 #o3d.io.write_triangle_mesh(args.mesh_file, combiner.mesh_o3d)
