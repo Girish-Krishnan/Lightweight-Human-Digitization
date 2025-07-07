@@ -136,7 +136,7 @@ The window lets you:
 * pick the storage folder,
 * choose resolution, frame rate, warm‑up count, number of captures,
 * browse for the calibration JSON, and output filenames,
-* toggle saving of individual point clouds and mesh visualisation.
+* toggle saving of individual point clouds and mesh visualization.
   Click **Submit** to record, post‑process, and build the mesh. Status messages appear in the terminal and dialog boxes.
 
 ### Using the Command Line
