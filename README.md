@@ -26,14 +26,14 @@ Python tools for multi‑camera capture, calibration, and 3D reconstruction of a
 
 ```bash
 # clone the repo
-$ git clone https://github.com/Girish-Krishnan/Lightweight‑Human‑Digitization.git
-$ cd Lightweight‑Human‑Digitization
+git clone https://github.com/Girish-Krishnan/Lightweight‑Human‑Digitization.git
+cd Lightweight‑Human‑Digitization
 
 # install Python packages (v‑env recommended)
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 
 # launch the graphical interface
-$ python gui.py
+python gui.py
 ```
 
 The GUI handles capture and reconstruction in one click after calibration has been saved.
@@ -78,7 +78,7 @@ Calibration needs to be repeated only when cameras move.
 Ensure the ChArUco board is in view of at least two cameras before each shot; press **space** to store a frame.
 
 ```bash
-$ python charuco_images.py \
+python charuco_images.py \
     --output_dir ./Capture_Data \
     --charuco_rows 9 \
     --charuco_cols 12 \
@@ -99,7 +99,7 @@ All options are optional; defaults are chosen for D415 sensors at **640×480 @
 ## Step 2 – Stereo Calibration
 
 ```bash
-$ python stereocalibrate.py \
+python stereocalibrate.py \
     --config_file ./configuration_parameters.json \
     --data_dir     ./Capture_Data \
     --bundle_adjust              # refine with non‑linear optimization (optional)
@@ -127,7 +127,7 @@ This file is read by later stages.
 ### Using the GUI
 
 ```bash
-$ python gui.py
+python gui.py
 ```
 
 The window lets you:
@@ -142,7 +142,7 @@ The window lets you:
 ### Using the Command Line
 
 ```bash
-$ python capture.py \
+python capture.py \
     --output_dir ./Capture_Data \
     -w 640 -ht 480 -f 60 \
     --warmup-frames 1000 \
@@ -165,7 +165,7 @@ The script writes one sub‑folder per camera: `serial/reconstruction_images/`.
 ## Step 4 – Point‑Cloud Fusion and Mesh Generation
 
 ```bash
-$ python combine_pcd.py \
+python combine_pcd.py \
     --config_file ./configuration_parameters.json \
     --data_dir     ./Capture_Data \
     --output_file  ./point_cloud_combined.ply \
@@ -191,13 +191,13 @@ The script estimates normals, runs Poisson surface reconstruction, smooths, remo
 **Record**
 
 ```bash
-$ python record_bag.py        # five‑second clip from each attached sensor
+python record_bag.py        # five‑second clip from each attached sensor
 ```
 
 **Convert**
 
 ```bash
-$ python process_bag.py       # writes RGB and depth frames to Capture_Data
+python process_bag.py       # writes RGB and depth frames to Capture_Data
 ```
 
 Edit the `bag_files` array inside `process_bag.py` or adapt the script.
@@ -209,7 +209,7 @@ Edit the `bag_files` array inside `process_bag.py` or adapt the script.
 Single command that wraps capture and fusion:
 
 ```bash
-$ bash mesh_generation.sh \
+bash mesh_generation.sh \
     --output_dir ./Capture_Data \
     -w 640 -ht 480 -f 60 \
     --warmup-frames 1000 \
