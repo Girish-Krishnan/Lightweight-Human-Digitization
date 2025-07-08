@@ -2,20 +2,19 @@
 """
 Interactive ChArUco calibration capture for any number of Intel RealSense D415 cameras.
 
-Press SPACE to record one frame from every connected camera. The script accepts the set when the
-board appears in at least `--min_views` cameras. Each live feed shows
-* red outlines for detected markers while the count is below `--threshold_charuco`,
-* green outlines and a green circle with a white check mark once the count reaches the threshold.
-
-Feeds are arranged in a square grid that scales with the camera count. Images are saved as
-`<output_dir>/<serial>/calibration_images/image_<idx>.jpg`. Use `--hardware_reset` if a camera locks
-up.
+* Press **SPACE** to record one frame from every connected camera.
+* A set is accepted when the board is detected in at least `--min_views` cameras.
+* Each live feed shows
+  * red outlines while the marker count is below `--threshold_charuco`,
+  * green outlines **plus** a green circle‑and‑check mark once the count meets the threshold.
+* Feeds are arranged in a square grid that scales automatically.
+* **Only the untouched infrared grayscale images are written to disk**—visual overlays exist only in the preview.
+* Use `--hardware_reset` if a camera locks up.
 """
 import json
 import argparse
 from math import ceil, sqrt
 from pathlib import Path
-from datetime import datetime
 
 import cv2
 import cv2.aruco as aruco
@@ -34,11 +33,11 @@ CONFIG_DEFAULT = {
 }
 
 # -----------------------------------------------------------------------------
-# Helpers
+# Helper functions
 # -----------------------------------------------------------------------------
 
-def parser():
-    p = argparse.ArgumentParser(description="Capture ChArUco calibration frames")
+def build_parser():
+    p = argparse.ArgumentParser(description="Capture ChArUco calibration frames with visual feedback")
     p.add_argument("--output_dir", default="./Capture_Data")
     p.add_argument("--config_file", default="./configuration_parameters.json")
     p.add_argument("--charuco_rows", type=int, default=9)
@@ -61,17 +60,17 @@ def connected_serials() -> list[str]:
     return [d.get_info(rs.camera_info.serial_number) for d in rs.context().query_devices()]
 
 
-def hard_reset():
+def hardware_reset():
     for d in rs.context().query_devices():
         d.hardware_reset()
-    print("Hardware reset sent, rerun after devices reconnect")
+    print("Hardware reset issued.  Re‑run after cameras reconnect.")
 
 
-def cfg_load(path: Path) -> dict:
+def load_cfg(path: Path) -> dict:
     return json.loads(path.read_text()) if path.exists() else CONFIG_DEFAULT.copy()
 
 
-def cfg_save(cfg: dict, path: Path):
+def save_cfg(cfg: dict, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cfg, indent=2))
 
@@ -83,46 +82,46 @@ def grid_stack(frames: list[np.ndarray]) -> np.ndarray:
     rows = ceil(len(frames) / cols)
     h, w = frames[0].shape[:2]
     black = np.zeros_like(frames[0])
-    out_rows = []
+    stacked_rows = []
     for r in range(rows):
-        row = []
+        row_cells = []
         for c in range(cols):
             idx = r * cols + c
-            row.append(frames[idx] if idx < len(frames) else black)
-        out_rows.append(np.hstack(row))
-    return np.vstack(out_rows)
+            row_cells.append(frames[idx] if idx < len(frames) else black)
+        stacked_rows.append(np.hstack(row_cells))
+    return np.vstack(stacked_rows)
 
 
 def draw_checkmark(img: np.ndarray):
     radius = int(min(img.shape[:2]) * 0.05)
     center = (radius + 10, radius + 10)
     cv2.circle(img, center, radius, (0, 255, 0), -1)
-    t = max(2, radius // 6)
+    thickness = max(2, radius // 6)
     p1 = (center[0] - radius // 3, center[1])
     p2 = (center[0] - radius // 10, center[1] + radius // 3)
     p3 = (center[0] + radius // 2, center[1] - radius // 3)
-    cv2.line(img, p1, p2, (255, 255, 255), t)
-    cv2.line(img, p2, p3, (255, 255, 255), t)
+    cv2.line(img, p1, p2, (255, 255, 255), thickness)
+    cv2.line(img, p2, p3, (255, 255, 255), thickness)
 
 # -----------------------------------------------------------------------------
-# Main
+# Main routine
 # -----------------------------------------------------------------------------
 
 def main():
-    args = parser().parse_args()
+    args = build_parser().parse_args()
 
     if args.hardware_reset:
-        hard_reset()
+        hardware_reset()
         return
 
     serials = connected_serials()
     if not serials:
-        print("No RealSense cameras detected")
+        print("No RealSense cameras found.")
         return
 
     out_root = Path(args.output_dir).resolve()
     cfg_path = Path(args.config_file).resolve()
-    cfg = cfg_load(cfg_path)
+    cfg = load_cfg(cfg_path)
     if args.num_imgs is not None:
         cfg["num_calibration_imgs"] = args.num_imgs
 
@@ -152,71 +151,69 @@ def main():
         sensor.set_option(rs.option.exposure, float(args.exposure))
         sensor.set_option(rs.option.gain, float(args.gain))
 
-        intr = cfg.setdefault("cams", {}).setdefault(s, {}).setdefault("intrinsics", {})
-        ir_i = rs.video_stream_profile(prof.get_stream(rs.stream.infrared)).get_intrinsics()
-        col_i = rs.video_stream_profile(prof.get_stream(rs.stream.color)).get_intrinsics()
-        intr.update({
+        intrinsic_block = cfg.setdefault("cams", {}).setdefault(s, {}).setdefault("intrinsics", {})
+        ir_intr = rs.video_stream_profile(prof.get_stream(rs.stream.infrared)).get_intrinsics()
+        col_intr = rs.video_stream_profile(prof.get_stream(rs.stream.color)).get_intrinsics()
+        intrinsic_block.update({
             "img_size": [args.width, args.height],
-            "focal_length": [col_i.fx, col_i.fy],
-            "img_center": [col_i.ppx, col_i.ppy],
-            "ir_focal_length": [ir_i.fx, ir_i.fy],
-            "ir_img_center": [ir_i.ppx, ir_i.ppy],
+            "focal_length": [col_intr.fx, col_intr.fy],
+            "img_center": [col_intr.ppx, col_intr.ppy],
+            "ir_focal_length": [ir_intr.fx, ir_intr.fy],
+            "ir_img_center": [ir_intr.ppx, ir_intr.ppy],
         })
 
         (out_root / s / CALIB_DIR).mkdir(parents=True, exist_ok=True)
         (out_root / s / RECONST_DIR).mkdir(parents=True, exist_ok=True)
 
-    cfg_save(cfg, cfg_path)
+    save_cfg(cfg, cfg_path)
     print("Connected cameras:", ", ".join(serials))
-    print("SPACE captures, ESC quits")
+    print("SPACE to capture, ESC to quit.")
 
-    done = 0
+    saved = 0
     needed = cfg["num_calibration_imgs"]
+    outline_thickness = 4
 
-    thickness = 4  # thicker marker outline
-
-    while done < needed:
+    while saved < needed:
         frames = [p.wait_for_frames() for p in pipelines]
-        views, ok_list = [], []
+        annotated_views, raw_grays, ok_flags = [], [], []
 
         for fr in frames:
             ir = fr.first(rs.stream.infrared)
             gray = np.asanyarray(ir.get_data())
-            color_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+            raw_grays.append(gray)  # store untouched frame for saving later
 
+            vis = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
             corners, ids, _ = aruco.detectMarkers(gray, aruco_dict, parameters=aruco_params)
-            cnt = 0 if ids is None else len(ids)
-            good = cnt >= args.threshold_charuco
-            col = (0, 255, 0) if good else (0, 0, 255)
+            count = 0 if ids is None else len(ids)
+            good = count >= args.threshold_charuco
+            color = (0, 255, 0) if good else (0, 0, 255)
 
-            if cnt:
-                # draw thick outline manually
+            if count:
                 for arr in corners:
                     pts = arr.reshape(-1, 2).astype(int)
-                    cv2.polylines(color_img, [pts], True, col, thickness)
+                    cv2.polylines(vis, [pts], True, color, outline_thickness)
             if good:
-                draw_checkmark(color_img)
-            views.append(color_img)
-            ok_list.append(good)
+                draw_checkmark(vis)
+            annotated_views.append(vis)
+            ok_flags.append(good)
 
-        cv2.imshow("Infrared", grid_stack(views))
+        cv2.imshow("Infrared", grid_stack(annotated_views))
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
             break
         if key == 32:
-            if sum(ok_list) < args.min_views:
-                print(f"Board good in {sum(ok_list)} views, need {args.min_views}")
+            if sum(ok_flags) < args.min_views:
+                print(f"Board acceptable in {sum(ok_flags)} views, need {args.min_views}. Skipped.")
                 continue
-            done += 1
-            for s, img in zip(serials, views):
-                gray_out = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                cv2.imwrite(str(out_root / s / CALIB_DIR / f"image_{done}.jpg"), gray_out)
-            print(f"Saved {done}/{needed}, good in {sum(ok_list)} cameras")
+            saved += 1
+            for s, raw in zip(serials, raw_grays):
+                cv2.imwrite(str(out_root / s / CALIB_DIR / f"image_{saved}.jpg"), raw)
+            print(f"Saved {saved}/{needed}   (good in {sum(ok_flags)} cameras)")
 
     cv2.destroyAllWindows()
     for p in pipelines:
         p.stop()
-    print("Finished")
+    print("Calibration capture complete")
 
 
 if __name__ == "__main__":
