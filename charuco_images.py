@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """
-Interactive ChArUco calibration capture for any number of Intel RealSense D415 cameras.
+Interactive ChArUco calibration capture for an arbitrary array of Intel RealSense D415 cameras.
 
+Live feedback
+-------------
 * **SPACE** captures a synchronized infrared frame from every camera.
-* A capture is accepted when the ChArUco board appears in at least `--min_views` cameras.
-* Preview grid per camera:
-  * red marker outlines when count < `--threshold_charuco`,
-  * green outlines plus a tick when the camera passes the threshold,
-  * serial number shown top‑left in a red banner for quick identification.
-* Realtime **camera‑pair graph** in a second window:
-  * rectangular nodes show full serial numbers,
-  * undirected edge appears once a pair has ≥ 1 shared capture,
-  * edge label counts shared captures and increments live.
-* Only raw infrared grayscale images are saved; overlays are for feedback only.
+* A capture is accepted when the board is present in at least `--min_views` cameras.
+* The preview grid shows, per camera:
+  * red outlines while the marker count is below `--threshold_charuco`,
+  * green outlines plus a tick after the count reaches the threshold,
+  * a colour‑coded banner with the camera serial top‑right (never overlaps the tick).
+* A second window hosts a colour‑coded camera graph:
+  * each node has the same colour as its preview banner,
+  * an edge appears once the pair has at least one shared capture,
+  * edge label increments with every additional shared image.
+* Only raw infrared grayscale frames are saved.
 * Use `--hardware_reset` if cameras freeze.
 """
 import json
@@ -26,6 +28,7 @@ import cv2.aruco as aruco
 import numpy as np
 import pyrealsense2 as rs
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import networkx as nx
 
 CALIB_DIR = "calibration_images"
@@ -57,7 +60,7 @@ def build_parser():
     p.add_argument("--gain", type=int, default=30)
     p.add_argument("--threshold_charuco", type=int, default=20)
     p.add_argument("--min_views", type=int, default=1)
-    p.add_argument("--num_imgs", type=int)
+    p.add_argument("--num_imgs", type=int, default=30)
     p.add_argument("--hardware_reset", action="store_true")
     return p
 
@@ -72,7 +75,7 @@ def hardware_reset():
     print("Hardware reset issued.  Re‑run after cameras reconnect.")
 
 
-def load_cfg(path: Path) -> dict:
+def load_cfg(path: Path):
     return json.loads(path.read_text()) if path.exists() else CONFIG_DEFAULT.copy()
 
 
@@ -88,14 +91,14 @@ def stack_grid(frames):
     rows = ceil(len(frames) / cols)
     h, w = frames[0].shape[:2]
     blk = np.zeros_like(frames[0])
-    rows_out = []
+    out_rows = []
     for r in range(rows):
         row = []
         for c in range(cols):
             idx = r * cols + c
             row.append(frames[idx] if idx < len(frames) else blk)
-        rows_out.append(np.hstack(row))
-    return np.vstack(rows_out)
+        out_rows.append(np.hstack(row))
+    return np.vstack(out_rows)
 
 
 def draw_check(img):
@@ -110,37 +113,44 @@ def draw_check(img):
     cv2.line(img, p2, p3, (255, 255, 255), t)
 
 
-def banner_text(img, text):
+def banner(img, text, color):
     font = cv2.FONT_HERSHEY_SIMPLEX
     scale = 0.5
     thick = 1
     (tw, th), _ = cv2.getTextSize(text, font, scale, thick)
-    cv2.rectangle(img, (0, 0), (tw + 10, th + 10), (0, 0, 255), -1)
-    cv2.putText(img, text, (5, th + 5), font, scale, (255, 255, 255), thick, cv2.LINE_AA)
+    w = img.shape[1]
+    x0 = w - (tw + 15)
+    cv2.rectangle(img, (x0, 0), (w, th + 12), color, -1)
+    cv2.putText(img, text, (x0 + 5, th + 6), font, scale, (255, 255, 255), thick, cv2.LINE_AA)
 
-# --------------------- graph helpers ---------------------
+# -------------------- graph helpers --------------------
 
-def init_graph(serials):
+def init_graph(serials, color_map):
     plt.ion()
     fig, ax = plt.subplots(figsize=(6, 6))
     fig.canvas.manager.set_window_title("Camera graph")
     g = nx.Graph()
     g.add_nodes_from(serials)
     pos = nx.circular_layout(g)
+    nx.draw_networkx_nodes(g, pos, node_color=[color_map[s] for s in serials], node_size=4500, node_shape='s', ax=ax)
+    nx.draw_networkx_labels(g, pos, labels={s: s for s in serials}, font_size=7, font_color="white", ax=ax)
+    ax.set_axis_off()
+    fig.canvas.draw()
+    fig.canvas.flush_events()
     return fig, ax, g, pos
 
 
-def update_graph(ax, g, pos, counts):
+def update_graph(ax, g, pos, counts, color_map):
     ax.clear()
     g.remove_edges_from(list(g.edges))
-    for (a, b), v in counts.items():
-        if v > 0:
-            g.add_edge(a, b, weight=v)
-    nx.draw_networkx_nodes(g, pos, ax=ax, node_color="#1f78b4", node_size=4500, node_shape='s')
-    nx.draw_networkx_labels(g, pos, ax=ax, font_size=7, font_color="white")
+    for (a, b), n in counts.items():
+        if n > 0:
+            g.add_edge(a, b, weight=n)
+    nx.draw_networkx_nodes(g, pos, node_color=[color_map[s] for s in g.nodes], node_size=4500, node_shape='s', ax=ax)
+    nx.draw_networkx_labels(g, pos, labels={s: s for s in g.nodes}, font_size=7, font_color="white", ax=ax)
     if g.edges:
-        nx.draw_networkx_edges(g, pos, ax=ax, width=2)
-        nx.draw_networkx_edge_labels(g, pos, ax=ax, edge_labels=nx.get_edge_attributes(g, "weight"), font_size=8)
+        nx.draw_networkx_edges(g, pos, width=2, ax=ax)
+        nx.draw_networkx_edge_labels(g, pos, edge_labels=nx.get_edge_attributes(g, "weight"), font_size=8, ax=ax)
     ax.set_axis_off()
     ax.figure.canvas.draw()
     ax.figure.canvas.flush_events()
@@ -151,7 +161,6 @@ def update_graph(ax, g, pos, counts):
 
 def main():
     args = build_parser().parse_args()
-
     if args.hardware_reset:
         hardware_reset()
         return
@@ -161,8 +170,13 @@ def main():
         print("No cameras detected")
         return
 
+    # assign distinct colours using tab10 / tab20 cycle
+    cmap = mpl.cm.get_cmap('tab20')
+    color_map = {s: tuple(int(255 * c) for c in cmap(i % 20)[:3]) for i, s in enumerate(serials)}
+    node_colors_plot = {s: mpl.colors.rgb2hex(np.array(color_map[s]) / 255) for s in serials}
+
     pair_counts = {tuple(sorted((a, b))): 0 for a, b in combinations(serials, 2)}
-    fig, ax, graph, pos = init_graph(serials)
+    fig, ax, graph, pos = init_graph(serials, node_colors_plot)
 
     root = Path(args.output_dir).resolve()
     cfg_path = Path(args.config_file).resolve()
@@ -170,63 +184,81 @@ def main():
     if args.num_imgs is not None:
         cfg["num_calibration_imgs"] = args.num_imgs
 
-    aruco_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
-    params = aruco.DetectorParameters_create()
+    dictionary = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    detector_params = aruco.DetectorParameters_create()
 
-    pipes, profiles = [], []
+    pipes, sensors = [], []
     for s in serials:
         pipe = rs.pipeline()
-        crs = rs.config()
-        crs.enable_device(s)
-        crs.enable_stream(rs.stream.color, args.width, args.height, rs.format.bgr8, args.fps)
-        crs.enable_stream(rs.stream.infrared, args.width, args.height, rs.format.y8, args.fps)
-        prof = pipe.start(crs)
+        rcfg = rs.config()
+        rcfg.enable_device(s)
+        rcfg.enable_stream(rs.stream.color, args.width, args.height, rs.format.bgr8, args.fps)
+        rcfg.enable_stream(rs.stream.infrared, args.width, args.height, rs.format.y8, args.fps)
+        pipe.start(rcfg)
+
+        prof = pipe.get_active_profile()
+        color_profile = rs.video_stream_profile(prof.get_stream(rs.stream.color))
+        ir_profile = rs.video_stream_profile(prof.get_stream(rs.stream.infrared))
+        color_intr = color_profile.get_intrinsics()
+        ir_intr = ir_profile.get_intrinsics()
+
+        # store intrinsics in configuration file
+        intr_block = cfg.setdefault("cams", {}).setdefault(s, {}).setdefault("intrinsics", {})
+        intr_block.update({
+            "img_size": [args.width, args.height],
+            "focal_length": [color_intr.fx, color_intr.fy],
+            "img_center": [color_intr.ppx, color_intr.ppy],
+            "ir_focal_length": [ir_intr.fx, ir_intr.fy],
+            "ir_img_center": [ir_intr.ppx, ir_intr.ppy],
+        })
+
+        sen = prof.get_device().first_depth_sensor()
+        sen.set_option(rs.option.enable_auto_exposure, 0)
+        sen.set_option(rs.option.exposure, float(args.exposure))
+        sen.set_option(rs.option.gain, float(args.gain))
+
         pipes.append(pipe)
-        profiles.append(prof)
-        dev = prof.get_device().first_depth_sensor()
-        dev.set_option(rs.option.enable_auto_exposure, 0)
-        dev.set_option(rs.option.exposure, float(args.exposure))
-        dev.set_option(rs.option.gain, float(args.gain))
+        sensors.append(sen)
+
         (root / s / CALIB_DIR).mkdir(parents=True, exist_ok=True)
+        (root / s / "reconstruction_images").mkdir(parents=True, exist_ok=True)
 
     save_cfg(cfg, cfg_path)
-    needed = cfg["num_calibration_imgs"]
-    saved = 0
-    thick = 4
+    needed, saved = cfg["num_calibration_imgs"], 0
+    outline = 4
 
     while saved < needed:
         frames = [p.wait_for_frames() for p in pipes]
-        previews, raws, ok_flags = [], [], []
-        for idx, fr in enumerate(frames):
-            ser = serials[idx]
+        previews, raws, ok = [], [], []
+        for ser, fr in zip(serials, frames):
             gray = np.asanyarray(fr.first(rs.stream.infrared).get_data())
             raws.append(gray)
             vis = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-            banner_text(vis, ser)
-            corners, ids, _ = aruco.detectMarkers(gray, aruco_dict, parameters=params)
+            banner(vis, ser, color_map[ser])
+            corners, ids, _ = aruco.detectMarkers(gray, dictionary, parameters=detector_params)
             cnt = 0 if ids is None else len(ids)
             good = cnt >= args.threshold_charuco
             col = (0, 255, 0) if good else (0, 0, 255)
             if cnt:
                 for arr in corners:
-                    cv2.polylines(vis, [arr.reshape(-1, 2).astype(int)], True, col, thick)
+                    cv2.polylines(vis, [arr.reshape(-1, 2).astype(int)], True, col, outline)
             if good:
                 draw_check(vis)
             previews.append(vis)
-            ok_flags.append(good)
+            ok.append(good)
 
         cv2.imshow("Infrared", stack_grid(previews))
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
             break
         if key == 32:
-            good_serials = [s for s, ok in zip(serials, ok_flags) if ok]
+            good_serials = [s for s, g in zip(serials, ok) if g]
             if len(good_serials) < args.min_views:
                 print(f"Need {args.min_views} good views, got {len(good_serials)}. Skipped.")
                 continue
             for a, b in combinations(sorted(good_serials), 2):
                 pair_counts[tuple(sorted((a, b)))] += 1
-            update_graph(ax, graph, pos, pair_counts)
+            update_graph(ax, graph, pos, pair_counts, node_colors_plot)
             saved += 1
             for s, img in zip(serials, raws):
                 cv2.imwrite(str(root / s / CALIB_DIR / f"image_{saved}.jpg"), img)
