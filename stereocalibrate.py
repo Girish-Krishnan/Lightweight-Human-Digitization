@@ -23,8 +23,8 @@ CALIB_IMAGES_DIR = '/calibration_images'
 parser = argparse.ArgumentParser(description='Stereo calibration')
 parser.add_argument('--bundle_adjust',action='store_true')
 parser.add_argument('--config_file', type=str, default='./configuration_parameters.json')
-parser.add_argument('--charuco_rows', type=int, default=9)
-parser.add_argument('--charuco_cols', type=int, default=12)
+parser.add_argument('--charuco_rows', type=int, default=8)
+parser.add_argument('--charuco_cols', type=int, default=11)
 parser.add_argument('--square_length', type=float, default=0.060)
 parser.add_argument('--marker_length', type=float, default=0.044)
 parser.add_argument('--data_dir', type=str, default='./Capture_Data')
@@ -38,8 +38,8 @@ args = parser.parse_args()
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
 ARUCO_DICT = aruco.Dictionary_get(aruco.DICT_5X5_250)
-CHARUCOBOARD_ROWCOUNT = args.charuco_rows
-CHARUCOBOARD_COLCOUNT = args.charuco_cols
+CHARUCOBOARD_ROWCOUNT = args.charuco_rows + 1 # number of squares in the charuco board
+CHARUCOBOARD_COLCOUNT = args.charuco_cols + 1
 
 distCoeffs = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
 
