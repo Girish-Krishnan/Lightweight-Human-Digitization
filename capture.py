@@ -43,9 +43,7 @@ if __name__ == '__main__':
     RECONST_IMAGES_DIR = '/reconstruction_images'
     CALIB_IMAGES_DIR = '/calibration_images'
 
-    numbered = False
-    if args.num_captures > 1:
-        numbered = True
+    numbered = True
  
     # Handle hardware reset option - resets all connected cameras
     # Use this option if the cameras are not responding

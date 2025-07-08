@@ -95,10 +95,10 @@ def validate_warmup_frames():
 def validate_num_captures():
     try:
         num_captures_value = int(num_captures.get())
-        if 1 <= num_captures_value <= 100:
+        if 1 <= num_captures_value <= 1000:
             return True
         else:
-            messagebox.showerror("Invalid Input", "Number of Captures must be between 1 and 100.")
+            messagebox.showerror("Invalid Input", "Number of Captures must be between 1 and 1000.")
             return False
     except ValueError:
         messagebox.showerror("Invalid Input", "Number of Captures must be a valid integer.")
@@ -142,8 +142,6 @@ def submit():
     ]
     if save_individual.get() == 1:
         cmd.append("--save_individual")
-    if visualize.get() == 1:
-        cmd.append("--visualize")
 
     try:
         subprocess.run(cmd, check=True)
@@ -166,23 +164,21 @@ resolution = StringVar(root)
 resolution.set("640x480")  # default value
 resolution.trace("w", update_resolution)  # Call update_resolution whenever the value changes
 
-fps = IntVar(value=60)
-warmup_frames = StringVar(value="1000")
-num_captures = StringVar(value="20")
+fps = IntVar(value=30)
+warmup_frames = StringVar(value="100")
+num_captures = StringVar(value="1")
 
 output_dir = StringVar(value='./Capture_Data')
 config_file = StringVar(value='./configuration_parameters.json')
 output_file = StringVar(value='./point_cloud_combined.ply')
 odom_file = StringVar(value='./odometry.log')
 mesh_file = StringVar(value='./mesh_combined.ply')
-save_individual = IntVar()
-visualize = IntVar()
+save_individual = IntVar(value=1)
 
 # Configure row and column layout for better alignment
 root.grid_columnconfigure(1, weight=1)
 
 # Labels
-#tk.Label(root, text="Hardware Reset:").grid(row=0, column=0, sticky="e")
 tk.Button(root, text="Reset Camera Hardware", command=hardware_reset).grid(row=0, column=0, sticky="ew", padx=5, pady=2, columnspan=2)
 
 tk.Label(root, text="Select Directory to Save Captures:").grid(row=1, column=0, sticky="e")
@@ -192,12 +188,6 @@ tk.Label(root, textvariable=output_dir).grid(row=2, column=0, columnspan=2, stic
 tk.Label(root, text="Clear Existing Capture Data?:").grid(row=3, column=0, sticky="e")
 tk.Radiobutton(root, text="Yes", variable=data_reset, value=1).grid(row=4, column=1, sticky="w")
 tk.Radiobutton(root, text="No", variable=data_reset, value=0).grid(row=3, column=1, sticky="w")
-
-# tk.Label(root, text="Resolution:").grid(row=4, column=0, sticky="e")
-# resolution_frame = tk.Frame(root)
-# tk.OptionMenu(resolution_frame, width, 640, 1280).pack(side="left")
-# tk.OptionMenu(resolution_frame, height, 480, 720).pack(side="right")
-# resolution_frame.grid(row=4, column=1, sticky="ew")
 
 tk.Label(root, text="Resolution:").grid(row=5, column=0, sticky="e")
 resolutions = ["640x480", "1280x720"]
@@ -236,10 +226,6 @@ tk.Label(root, text="Save Individual PCDs?:").grid(row=14, column=0, sticky="e")
 tk.Radiobutton(root, text="Yes", variable=save_individual, value=1).grid(row=14, column=1, sticky="w")
 tk.Radiobutton(root, text="No", variable=save_individual, value=0).grid(row=15, column=1, sticky="w")
 
-tk.Label(root, text="Visualize Resulting Mesh?:").grid(row=16, column=0, sticky="e")
-tk.Radiobutton(root, text="Yes", variable=visualize, value=1).grid(row=16, column=1, sticky="w")
-tk.Radiobutton(root, text="No", variable=visualize, value=0).grid(row=17, column=1, sticky="w")
-
-tk.Button(root, text="Submit", command=submit).grid(row=18, column=0,columnspan=2, pady=4,  sticky="ew")
+tk.Button(root, text="Submit", command=submit).grid(row=16, column=0,columnspan=2, pady=4,  sticky="ew")
 
 root.mainloop()

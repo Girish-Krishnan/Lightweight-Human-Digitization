@@ -136,8 +136,7 @@ python combine_pcd.py \
     --frame_number 1 \
     --save_individual   # keep per‑camera clouds
 ```
-Extra switches
-* `--visualize` opens an Open3D viewer to inspect the merged cloud.
+Extra switches:
 * `--save_individual` stores one PLY per camera before fusion.
 
 The script estimates normals, runs Poisson reconstruction with depth eight, smooths, removes small clusters, re‑colors vertices, then saves both cloud and mesh.  Increase the Poisson `depth` value inside the script when you need finer detail at the cost of longer processing time.

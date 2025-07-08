@@ -18,7 +18,6 @@ parser.add_argument('--config_file', type=str, default='./configuration_paramete
 parser.add_argument('--output_file', type=str, default='./point_cloud_combined.ply')
 parser.add_argument('--data_dir', type=str, default='./Capture_Data')
 parser.add_argument('--save_individual', action='store_true')
-parser.add_argument('--visualize', action='store_true')
 parser.add_argument('--odom_file', type=str, default='./odometry.log')
 parser.add_argument('--mesh_file', type=str, default='./mesh_combined.ply')
 parser.add_argument('--frame_number', type=int, default=1)
@@ -135,8 +134,4 @@ for i in range(len(cams_list)):
 combiner = reconstruction.Combiner(cam)
 combiner.combine()
 o3d.io.write_point_cloud(args.output_file, combiner.pcd_o3d)
-#o3d.io.write_triangle_mesh(args.mesh_file, combiner.mesh_o3d)
-o3d.io.write_triangle_mesh(args.mesh_file.split('/')[1] + '-mesh.ply', combiner.mesh_o3d_poisson)
-
-# if args.visualize:
-#     combiner.visualize()
+o3d.io.write_triangle_mesh(args.mesh_file, combiner.mesh_o3d_poisson)
