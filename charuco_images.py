@@ -49,10 +49,8 @@ def build_parser():
     p = argparse.ArgumentParser(description="ChArUco capture with live camera‑pair graph")
     p.add_argument("--output_dir", default="./Capture_Data")
     p.add_argument("--config_file", default="./configuration_parameters.json")
-    p.add_argument("--charuco_rows", type=int, default=9)
-    p.add_argument("--charuco_cols", type=int, default=12)
-    p.add_argument("--square_length", type=float, default=0.060)
-    p.add_argument("--marker_length", type=float, default=0.044)
+    p.add_argument("--charuco_rows", type=int, default=8)
+    p.add_argument("--charuco_cols", type=int, default=11)
     p.add_argument("--width", type=int, default=640)
     p.add_argument("--height", type=int, default=480)
     p.add_argument("--fps", type=int, default=30)
@@ -182,8 +180,9 @@ def main():
     root = Path(args.output_dir).resolve()
     cfg_path = Path(args.config_file).resolve()
     cfg = load_cfg(cfg_path)
-    if args.num_imgs is not None:
-        cfg["num_calibration_imgs"] = args.num_imgs
+    
+    cfg["num_calibration_imgs"] = args.num_imgs
+    cfg["checkerboard_dimensions"] = [args.charuco_rows, args.charuco_cols]
 
     dictionary = aruco.Dictionary_get(aruco.DICT_5X5_250)
     detector_params = aruco.DetectorParameters_create()
