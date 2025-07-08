@@ -35,6 +35,7 @@ python charuco_images.py --output_dir ./Capture_Data
 python stereocalibrate.py --data_dir ./Capture_Data
 
 # then launch the graphical interface for everyday scans
+# (you can just use the default parameters and hit "Submit")
 python gui.py
 ```
 The GUI completes capture, fusion, and mesh export after calibration has been saved.
