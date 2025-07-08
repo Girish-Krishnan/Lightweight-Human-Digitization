@@ -57,7 +57,7 @@ def build_parser():
     p.add_argument("--exposure", type=int, default=70000)
     p.add_argument("--gain", type=int, default=30)
     p.add_argument("--threshold_charuco", type=int, default=20)
-    p.add_argument("--min_views", type=int, default=1)
+    p.add_argument("--min_views", type=int, default=2)
     p.add_argument("--num_imgs", type=int, default=30)
     p.add_argument("--hardware_reset", action="store_true")
     return p
