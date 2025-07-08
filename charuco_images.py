@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Capture infrared frames that show a ChArUco board, store images for calibration, and write or update a
-configuration JSON with camera intrinsics.
+Interactive ChArUco calibration capture for any number of Intel RealSense D415 cameras.
 
-*  **SPACE** – capture one frame from every attached RealSense camera.
-*  A capture is accepted when the board is detected in at least `--min_views` cameras (default 1).
-*  Each live feed is displayed in a compact grid (2 × 2 for four cameras, 3 × 3 for nine, …).
-*  Detected ArUco markers are drawn **red** while the count is below `--threshold_charuco`, and turn
-   **green** when the count meets or exceeds the threshold—helping you place the board correctly.
-*  Images are saved as `<output_dir>/<serial>/calibration_images/image_<idx>.jpg`.
-*  Use `--hardware_reset` to recover frozen cameras.
+Press SPACE to record one frame from every connected camera. The script accepts the set when the
+board appears in at least `--min_views` cameras. Each live feed shows
+* red outlines for detected markers while the count is below `--threshold_charuco`,
+* green outlines and a green circle with a white check mark once the count reaches the threshold.
+
+Feeds are arranged in a square grid that scales with the camera count. Images are saved as
+`<output_dir>/<serial>/calibration_images/image_<idx>.jpg`. Use `--hardware_reset` if a camera locks
+up.
 """
 import json
 import argparse
@@ -34,11 +34,11 @@ CONFIG_DEFAULT = {
 }
 
 # -----------------------------------------------------------------------------
-# Helper functions
+# Helpers
 # -----------------------------------------------------------------------------
 
-def make_parser():
-    p = argparse.ArgumentParser(description="Capture ChArUco calibration frames from multiple RealSense cameras")
+def parser():
+    p = argparse.ArgumentParser(description="Capture ChArUco calibration frames")
     p.add_argument("--output_dir", default="./Capture_Data")
     p.add_argument("--config_file", default="./configuration_parameters.json")
     p.add_argument("--charuco_rows", type=int, default=9)
@@ -57,66 +57,75 @@ def make_parser():
     return p
 
 
-def serials_rs() -> list[str]:
+def connected_serials() -> list[str]:
     return [d.get_info(rs.camera_info.serial_number) for d in rs.context().query_devices()]
 
 
-def reset_hardware():
+def hard_reset():
     for d in rs.context().query_devices():
         d.hardware_reset()
-    print("Hardware reset sent.  Wait for cameras to reconnect and rerun the script.")
+    print("Hardware reset sent, rerun after devices reconnect")
 
 
-def load_cfg(path: Path) -> dict:
-    if path.exists():
-        return json.loads(path.read_text())
-    return CONFIG_DEFAULT.copy()
+def cfg_load(path: Path) -> dict:
+    return json.loads(path.read_text()) if path.exists() else CONFIG_DEFAULT.copy()
 
 
-def save_cfg(cfg: dict, path: Path):
+def cfg_save(cfg: dict, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cfg, indent=2))
 
 
-def stack_grid(frames: list[np.ndarray]) -> np.ndarray:
+def grid_stack(frames: list[np.ndarray]) -> np.ndarray:
     if len(frames) == 1:
         return frames[0]
     cols = ceil(sqrt(len(frames)))
     rows = ceil(len(frames) / cols)
     h, w = frames[0].shape[:2]
-    blank = np.zeros_like(frames[0])
-    rows_img = []
+    black = np.zeros_like(frames[0])
+    out_rows = []
     for r in range(rows):
-        row_cells = []
+        row = []
         for c in range(cols):
             idx = r * cols + c
-            row_cells.append(frames[idx] if idx < len(frames) else blank)
-        rows_img.append(np.hstack(row_cells))
-    return np.vstack(rows_img)
+            row.append(frames[idx] if idx < len(frames) else black)
+        out_rows.append(np.hstack(row))
+    return np.vstack(out_rows)
+
+
+def draw_checkmark(img: np.ndarray):
+    radius = int(min(img.shape[:2]) * 0.05)
+    center = (radius + 10, radius + 10)
+    cv2.circle(img, center, radius, (0, 255, 0), -1)
+    t = max(2, radius // 6)
+    p1 = (center[0] - radius // 3, center[1])
+    p2 = (center[0] - radius // 10, center[1] + radius // 3)
+    p3 = (center[0] + radius // 2, center[1] - radius // 3)
+    cv2.line(img, p1, p2, (255, 255, 255), t)
+    cv2.line(img, p2, p3, (255, 255, 255), t)
 
 # -----------------------------------------------------------------------------
 # Main
 # -----------------------------------------------------------------------------
 
 def main():
-    args = make_parser().parse_args()
+    args = parser().parse_args()
 
     if args.hardware_reset:
-        reset_hardware()
+        hard_reset()
         return
 
-    serials = serials_rs()
+    serials = connected_serials()
     if not serials:
-        print("No RealSense cameras found.")
+        print("No RealSense cameras detected")
         return
 
     out_root = Path(args.output_dir).resolve()
     cfg_path = Path(args.config_file).resolve()
-    cfg = load_cfg(cfg_path)
+    cfg = cfg_load(cfg_path)
     if args.num_imgs is not None:
         cfg["num_calibration_imgs"] = args.num_imgs
 
-    # ChArUco definitions
     aruco_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
     board = aruco.CharucoBoard_create(
         squaresX=args.charuco_cols,
@@ -127,7 +136,6 @@ def main():
     )
     aruco_params = aruco.DetectorParameters_create()
 
-    # Start each camera
     pipelines, profiles = [], []
     for s in serials:
         pipe = rs.pipeline()
@@ -144,64 +152,71 @@ def main():
         sensor.set_option(rs.option.exposure, float(args.exposure))
         sensor.set_option(rs.option.gain, float(args.gain))
 
-        intr_block = cfg.setdefault("cams", {}).setdefault(s, {}).setdefault("intrinsics", {})
-        ir_intr = rs.video_stream_profile(prof.get_stream(rs.stream.infrared)).get_intrinsics()
-        color_intr = rs.video_stream_profile(prof.get_stream(rs.stream.color)).get_intrinsics()
-        intr_block.update(
-            {
-                "img_size": [args.width, args.height],
-                "focal_length": [color_intr.fx, color_intr.fy],
-                "img_center": [color_intr.ppx, color_intr.ppy],
-                "ir_focal_length": [ir_intr.fx, ir_intr.fy],
-                "ir_img_center": [ir_intr.ppx, ir_intr.ppy],
-            }
-        )
+        intr = cfg.setdefault("cams", {}).setdefault(s, {}).setdefault("intrinsics", {})
+        ir_i = rs.video_stream_profile(prof.get_stream(rs.stream.infrared)).get_intrinsics()
+        col_i = rs.video_stream_profile(prof.get_stream(rs.stream.color)).get_intrinsics()
+        intr.update({
+            "img_size": [args.width, args.height],
+            "focal_length": [col_i.fx, col_i.fy],
+            "img_center": [col_i.ppx, col_i.ppy],
+            "ir_focal_length": [ir_i.fx, ir_i.fy],
+            "ir_img_center": [ir_i.ppx, ir_i.ppy],
+        })
 
         (out_root / s / CALIB_DIR).mkdir(parents=True, exist_ok=True)
         (out_root / s / RECONST_DIR).mkdir(parents=True, exist_ok=True)
 
-    save_cfg(cfg, cfg_path)
+    cfg_save(cfg, cfg_path)
     print("Connected cameras:", ", ".join(serials))
-    print("Press SPACE to capture, ESC to quit.")
+    print("SPACE captures, ESC quits")
 
-    captured = 0
-    total_needed = cfg["num_calibration_imgs"]
+    done = 0
+    needed = cfg["num_calibration_imgs"]
 
-    while captured < total_needed:
+    thickness = 4  # thicker marker outline
+
+    while done < needed:
         frames = [p.wait_for_frames() for p in pipelines]
-        annotated, good_views = [], []
+        views, ok_list = [], []
 
         for fr in frames:
-            ir_frame = fr.first(rs.stream.infrared)
-            gray = np.asanyarray(ir_frame.get_data())
-            img_color = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+            ir = fr.first(rs.stream.infrared)
+            gray = np.asanyarray(ir.get_data())
+            color_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
             corners, ids, _ = aruco.detectMarkers(gray, aruco_dict, parameters=aruco_params)
-            count = 0 if ids is None else len(ids)
-            meets = count >= args.threshold_charuco
-            color = (0, 255, 0) if meets else (0, 0, 255)  # green or red
-            if count:
-                aruco.drawDetectedMarkers(img_color, corners, borderColor=color)
-            annotated.append(img_color)
-            good_views.append(meets)
+            cnt = 0 if ids is None else len(ids)
+            good = cnt >= args.threshold_charuco
+            col = (0, 255, 0) if good else (0, 0, 255)
 
-        cv2.imshow("Infrared", stack_grid(annotated))
+            if cnt:
+                # draw thick outline manually
+                for arr in corners:
+                    pts = arr.reshape(-1, 2).astype(int)
+                    cv2.polylines(color_img, [pts], True, col, thickness)
+            if good:
+                draw_checkmark(color_img)
+            views.append(color_img)
+            ok_list.append(good)
+
+        cv2.imshow("Infrared", grid_stack(views))
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
             break
         if key == 32:
-            if sum(good_views) < args.min_views:
-                print(f"Only {sum(good_views)} cameras meet the threshold (< {args.min_views}). Frame skipped.")
+            if sum(ok_list) < args.min_views:
+                print(f"Board good in {sum(ok_list)} views, need {args.min_views}")
                 continue
-            captured += 1
-            for s, img in zip(serials, annotated):
-                cv2.imwrite(str(out_root / s / CALIB_DIR / f"image_{captured}.jpg"), cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
-            print(f"Saved frame {captured}/{total_needed} (good in {sum(good_views)} cameras)")
+            done += 1
+            for s, img in zip(serials, views):
+                gray_out = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                cv2.imwrite(str(out_root / s / CALIB_DIR / f"image_{done}.jpg"), gray_out)
+            print(f"Saved {done}/{needed}, good in {sum(ok_list)} cameras")
 
     cv2.destroyAllWindows()
     for p in pipelines:
         p.stop()
-    print("Done.")
+    print("Finished")
 
 
 if __name__ == "__main__":
