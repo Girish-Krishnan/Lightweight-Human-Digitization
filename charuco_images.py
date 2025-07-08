@@ -60,7 +60,7 @@ def build_parser():
     p.add_argument("--gain", type=int, default=30)
     p.add_argument("--threshold_charuco", type=int, default=20)
     p.add_argument("--min_views", type=int, default=1)
-    p.add_argument("--num_imgs", type=int)
+    p.add_argument("--num_imgs", type=int, default=30)
     p.add_argument("--hardware_reset", action="store_true")
     return p
 
@@ -113,17 +113,16 @@ def draw_check(img):
     cv2.line(img, p2, p3, (255, 255, 255), t)
 
 
-def banner(img, text, rgb):
-    """Draw coloured banner top‑right; rgb is (R,G,B) 0‑255."""
-    bgr = (rgb[2], rgb[1], rgb[0])  # convert for OpenCV
+def banner(img, text, color):
     font = cv2.FONT_HERSHEY_SIMPLEX
     scale = 0.5
     thick = 1
     (tw, th), _ = cv2.getTextSize(text, font, scale, thick)
     w = img.shape[1]
     x0 = w - (tw + 15)
-    cv2.rectangle(img, (x0, 0), (w, th + 12), bgr, -1)
-    cv2.putText(img, text, (x0 + 5, th + 6), font, scale, (255, 255, 255), thick, cv2.LINE_AA)(img, text, (x0 + 5, th + 6), font, scale, (255, 255, 255), thick, cv2.LINE_AA)
+    color_bgr = (color[2], color[1], color[0])  # OpenCV uses BGR
+    cv2.rectangle(img, (x0, 0), (w, th + 12), color_bgr, -1)
+    cv2.putText(img, text, (x0 + 5, th + 6), font, scale, (255, 255, 255), thick, cv2.LINE_AA)
 
 # -------------------- graph helpers --------------------
 
