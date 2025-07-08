@@ -1,290 +1,185 @@
-import pyrealsense2 as rs
+#!/usr/bin/env python3
+"""
+Capture infrared frames that show a ChArUco board, store images for calibration, and write or update a
+configuration JSON with camera intrinsics.
+
+Press **SPACE** to grab one frame from **every** attached RealSense camera.  The script now accepts a
+frame if the board is detected in *at least* `--min_views` cameras (default 1), so you are not required
+to keep the board visible to every sensor at the same time.
+
+Folders created per camera:
+    <output_dir>/<serial>/calibration_images/image_<idx>.jpg
+
+Use `--hardware_reset` when cameras become unresponsive.
+"""
 import os
-import cv2 as cv
-import numpy as np
 import json
-import cv2.aruco as aruco
-import glob
-from itertools import combinations
 import argparse
+from pathlib import Path
+from datetime import datetime
 
-RECONST_IMAGES_DIR = '/reconstruction_images'
-CALIB_IMAGES_DIR = '/calibration_images'
+import cv2
+import cv2.aruco as aruco
+import numpy as np
+import pyrealsense2 as rs
 
-parser = argparse.ArgumentParser(description='Capture calibration images from Intel RealSense cameras')
-parser.add_argument('--hardware_reset', action='store_true', help='Reset all connected cameras')
-parser.add_argument('--output_dir', type=str, default='./Capture_Data', help='Output directory for captured data')
-parser.add_argument('--charuco_rows', type=int, default=9, help='Number of rows in charuco board')
-parser.add_argument('--charuco_cols', type=int, default=12, help='Number of columns in charuco board')
-parser.add_argument('--square_length', type=float, default=0.060, help='Length of squares in charuco board')
-parser.add_argument('--marker_length', type=float, default=0.044, help='Length of markers in charuco board')
-parser.add_argument('--config_file', type=str, default='./configuration_parameters.json', help='Path to configuration file')
-parser.add_argument('--fps', type=int, default=30, help='FPS of captured images')
-parser.add_argument('--exposure', type=int, default=70000, help='Exposure of captured images')
-parser.add_argument('--gain', type=int, default=30, help='Gain of captured images')
-parser.add_argument('--width', type=int, default=640,help='Width of captured images')
-parser.add_argument('--height', type=int, default=480,help='Height of captured images')
-parser.add_argument('--threshold_charuco', type=int, default=20,help='Minimum number of common Aruco markers needed')
+CALIB_DIR_NAME = "calibration_images"
+RECONST_DIR_NAME = "reconstruction_images"
+CONFIG_DEFAULT = {
+    "checkerboard_size_mm": 60,
+    "checkerboard_dimensions": [8, 11],
+    "num_calibration_imgs": 30,
+    "img_file_type": ".jpg",
+    "threshold": 5,
+    "cams": {}
+}
 
-args = parser.parse_args()
+def parse_args():
+    p = argparse.ArgumentParser(description="Grab ChArUco calibration frames from Intel RealSense cameras")
+    p.add_argument("--output_dir", default="./Capture_Data", help="Root folder for captured data")
+    p.add_argument("--config_file", default="./configuration_parameters.json", help="Path for the JSON config")
+    p.add_argument("--charuco_rows", type=int, default=9)
+    p.add_argument("--charuco_cols", type=int, default=12)
+    p.add_argument("--square_length", type=float, default=0.060)
+    p.add_argument("--marker_length", type=float, default=0.044)
+    p.add_argument("--width", type=int, default=640)
+    p.add_argument("--height", type=int, default=480)
+    p.add_argument("--fps", type=int, default=30)
+    p.add_argument("--exposure", type=int, default=70000)
+    p.add_argument("--gain", type=int, default=30)
+    p.add_argument("--threshold_charuco", type=int, default=20, help="minimum visible Charuco ids per camera")
+    p.add_argument("--min_views", type=int, default=1, help="accept a frame if the board is seen by THIS many cameras")
+    p.add_argument("--num_imgs", type=int, help="override num_calibration_imgs in the config")
+    p.add_argument("--hardware_reset", action="store_true", help="reset all connected cameras and quit")
+    return p.parse_args()
 
-if args.hardware_reset:
-    print("Resetting all camera hardware")
+def discover_serials():
     ctx = rs.context()
-    devices = ctx.query_devices()
-    for dev in devices:
+    return [dev.get_info(rs.camera_info.serial_number) for dev in ctx.query_devices()]
+
+def reset_hardware():
+    ctx = rs.context()
+    for dev in ctx.query_devices():
         dev.hardware_reset()
+    print("Reset complete.  Please unplug and replug cameras if they do not reappear.")
 
-    print('------------------------------------')
-    print("Resetting complete")
-    print('Exiting program')
-    print('------------------------------------')
-    exit(0)
+def load_or_create_config(path: Path) -> dict:
+    if path.exists():
+        with path.open() as f:
+            cfg = json.load(f)
+    else:
+        cfg = CONFIG_DEFAULT.copy()
+    for k, v in CONFIG_DEFAULT.items():
+        cfg.setdefault(k, v)
+    return cfg
 
-# Constant parameters used in Aruco methods
-ARUCO_PARAMETERS = aruco.DetectorParameters_create()
-ARUCO_DICT = aruco.Dictionary_get(aruco.DICT_5X5_250)
-
-CHARUCOBOARD_ROWCOUNT = args.charuco_rows
-CHARUCOBOARD_COLCOUNT = args.charuco_cols
-
-distCoeffs = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
-
-# Create grid board object we're using in our stream
-CHARUCO_BOARD = aruco.CharucoBoard_create(
-    squaresX=CHARUCOBOARD_COLCOUNT,
-    squaresY=CHARUCOBOARD_ROWCOUNT,
-    squareLength=args.square_length,
-    markerLength=args.marker_length,
-    dictionary=ARUCO_DICT)
-
-serial_numbers = []
-pipelines = []
-configs = []
-profiles = []
-num_images = 0
-
-with(open(args.config_file)) as f:
-    configuration_parameters = json.load(f)
-    num_images = configuration_parameters["num_calibration_imgs"]
-    f.close()
-
-NUM_CALIB_IMGS = configuration_parameters["num_calibration_imgs"]
-CHECKERBOARD = (
-configuration_parameters["checkerboard_dimensions"][0], configuration_parameters["checkerboard_dimensions"][1])
-CHECKERBOARD_SIZE = configuration_parameters["checkerboard_size_mm"]  # units: millimeters
-CHECKERBOARD_SIZE *= 0.001
-IMAGE_TYPE = configuration_parameters["img_file_type"]
-NUM_CAMS = len(configuration_parameters["cams"])
-THRESHOLD = configuration_parameters["threshold"]
-
-criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-serial_numbers = list(configuration_parameters["cams"].keys())
-
-objp = np.zeros((CHECKERBOARD[1] * CHECKERBOARD[0], 3), np.float32)
-objp[:, :2] = np.mgrid[0:CHECKERBOARD[1], 0:CHECKERBOARD[0]].T.reshape(-1, 2)
-objp = CHECKERBOARD_SIZE * objp
-
-# Exception handling when no camera images were found:
-
-if NUM_CAMS == 0:
-    print("No camera images found. Please check the directory.")
-    exit(-1)
-
-# Extracting path of individual image stored in a given directory
-images = []
-for i in range(NUM_CAMS):
-    images.append(glob.glob(args.output_dir + '/' + serial_numbers[i] + CALIB_IMAGES_DIR + "/*" + IMAGE_TYPE))
-
-image_pairs = combinations(range(NUM_CAMS), 2)  # finding all distinct pairs of cameras
-
-for pair in image_pairs:
-    x = pair[0]
-    y = pair[1]
-    common_img_count = 0  # the number of common images between the two cameras that contain the chessboard successfully detected
-
-    cam1_f = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_focal_length"]
-    cam1_c = configuration_parameters["cams"][serial_numbers[x]]["intrinsics"]["ir_img_center"]
-    cam1_mtx = np.array([
-        [cam1_f[0], 0, cam1_c[0]],
-        [0, cam1_f[1], cam1_c[1]],
-        [0, 0, 1]
-    ])
-    cam2_f = configuration_parameters["cams"][serial_numbers[y]]["intrinsics"]["ir_focal_length"]
-    cam2_c = configuration_parameters["cams"][serial_numbers[y]]["intrinsics"]["ir_img_center"]
-    cam2_mtx = np.array([
-        [cam2_f[0], 0, cam2_c[0]],
-        [0, cam2_f[1], cam2_c[1]],
-        [0, 0, 1]
-    ])
-
-    objpoints = []  # Creating vector to store vectors of 3D points for each checkerboard image
-    imgpoints_1 = []
+def save_config(cfg: dict, path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        json.dump(cfg, f, indent=2)
 
 
-serial_numbers = []
-ctx = rs.context()
-if len(ctx.devices) > 0:
+def main():
+    args = parse_args()
 
-    for device_num in range(len(ctx.devices)):
-        print ('Found device: ', ctx.devices[device_num].get_info(rs.camera_info.name), ' ', ctx.devices[device_num].get_info(rs.camera_info.serial_number))
+    if args.hardware_reset:
+        reset_hardware()
+        return
 
-        pipelines.append(rs.pipeline())
-        configs.append(rs.config())
-        configs[device_num].enable_device(ctx.devices[device_num].get_info(rs.camera_info.serial_number))
-        configs[device_num].enable_stream(rs.stream.color, args.width, args.height, rs.format.bgr8, args.fps)
-        configs[device_num].enable_stream(rs.stream.infrared, args.width, args.height, rs.format.y8, args.fps)
-        pipelines[device_num].start(configs[device_num])
+    serials = discover_serials()
+    if not serials:
+        print("No cameras found.  Connect at least one RealSense D415.")
+        return
 
-        profile = pipelines[device_num].get_active_profile()
+    out_root = Path(args.output_dir).resolve()
+    cfg_path = Path(args.config_file).resolve()
+    cfg = load_or_create_config(cfg_path)
+    if args.num_imgs is not None:
+        cfg["num_calibration_imgs"] = args.num_imgs
+
+    # Charuco board and detection parameters
+    aruco_params = aruco.DetectorParameters_create()
+    aruco_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    board = aruco.CharucoBoard_create(
+        squaresX=args.charuco_cols,
+        squaresY=args.charuco_rows,
+        squareLength=args.square_length,
+        markerLength=args.marker_length,
+        dictionary=aruco_dict,
+    )
+
+    # Set up pipelines
+    pipelines = []
+    profiles = []
+    for s in serials:
+        plc = rs.pipeline()
+        cfg_rs = rs.config()
+        cfg_rs.enable_device(s)
+        cfg_rs.enable_stream(rs.stream.color, args.width, args.height, rs.format.bgr8, args.fps)
+        cfg_rs.enable_stream(rs.stream.infrared, args.width, args.height, rs.format.y8, args.fps)
+        profile = plc.start(cfg_rs)
+        sensor = profile.get_device().first_depth_sensor()
+        sensor.set_option(rs.option.enable_auto_exposure, 0)
+        sensor.set_option(rs.option.exposure, float(args.exposure))
+        sensor.set_option(rs.option.gain, float(args.gain))
+        pipelines.append(plc)
         profiles.append(profile)
-        color_profile = rs.video_stream_profile(profile.get_stream(rs.stream.color))
-        color_intrinsics = color_profile.get_intrinsics()
-        ir_profile = rs.video_stream_profile(profile.get_stream(rs.stream.infrared))
-        ir_intrinsics = ir_profile.get_intrinsics()
 
-        s_num = ctx.devices[device_num].get_info(rs.camera_info.serial_number)
-        serial_numbers.append(s_num)
-        configuration_parameters["cams"][s_num] = {}
-        configuration_parameters["cams"][s_num]["intrinsics"] = {}
-        configuration_parameters["cams"][s_num]["intrinsics"]["img_size"] = [args.width, args.height]
-        configuration_parameters["cams"][s_num]["intrinsics"]["focal_length"] = [color_intrinsics.fx,
-                                                                                       color_intrinsics.fy]
-        configuration_parameters["cams"][s_num]["intrinsics"]["img_center"] = [color_intrinsics.ppx,
-                                                                                     color_intrinsics.ppy]
+        # Record intrinsics into the JSON if missing
+        ir_intr = rs.video_stream_profile(profile.get_stream(rs.stream.infrared)).get_intrinsics()
+        color_intr = rs.video_stream_profile(profile.get_stream(rs.stream.color)).get_intrinsics()
+        if s not in cfg["cams"]:
+            cfg["cams"][s] = {"intrinsics": {}}
+        cam_cfg = cfg["cams"][s]["intrinsics"]
+        cam_cfg["img_size"] = [args.width, args.height]
+        cam_cfg["focal_length"] = [color_intr.fx, color_intr.fy]
+        cam_cfg["img_center"] = [color_intr.ppx, color_intr.ppy]
+        cam_cfg["ir_focal_length"] = [ir_intr.fx, ir_intr.fy]
+        cam_cfg["ir_img_center"] = [ir_intr.ppx, ir_intr.ppy]
 
-        configuration_parameters["cams"][s_num]["intrinsics"]["ir_focal_length"] = [ir_intrinsics.fx,
-                                                                                       ir_intrinsics.fy]
-        configuration_parameters["cams"][s_num]["intrinsics"]["ir_img_center"] = [ir_intrinsics.ppx,
-                                                                                     ir_intrinsics.ppy]
-        assert color_intrinsics.coeffs == [0.0, 0.0, 0.0, 0.0, 0.0]
-        assert ir_intrinsics.coeffs == [0.0, 0.0, 0.0, 0.0, 0.0]
+        # Ensure folder structure exists
+        (out_root / s / CALIB_DIR_NAME).mkdir(parents=True, exist_ok=True)
+        (out_root / s / RECONST_DIR_NAME).mkdir(parents=True, exist_ok=True)
 
-        # disable IR emitter and auto exposure
-        device = profile.get_device()
-        depth_sensor = device.query_sensors()[0]
-        emitter = depth_sensor.get_option(rs.option.emitter_enabled)
-        depth_sensor.set_option(rs.option.emitter_enabled, 0)  # disable IR emitter
-        emitter1 = depth_sensor.get_option(rs.option.emitter_enabled)
+    save_config(cfg, cfg_path)
 
-        depth_sensor.set_option(rs.option.enable_auto_exposure, False)  # disable auto exposure
+    print("Connected cameras:", ", ".join(serials))
+    print("Press SPACE to capture.  ESC quits.")
 
-        if not os.path.exists(args.output_dir + "/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number)):
-            os.makedirs(args.output_dir + "/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number))
+    capture_count = 0
+    while capture_count < cfg["num_calibration_imgs"]:
+        frames = [plc.wait_for_frames() for plc in pipelines]
+        ir_images = []
+        valid_board = []
+        for f in frames:
+            ir = f.first(rs.stream.infrared)
+            ir_np = np.asanyarray(ir.get_data())
+            ir_images.append(ir_np)
+            corners, ids, _ = aruco.detectMarkers(ir_np, aruco_dict, parameters=aruco_params)
+            good = ids is not None and len(ids) >= args.threshold_charuco
+            valid_board.append(good)
 
-        if not os.path.exists(args.output_dir + "/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + RECONST_IMAGES_DIR):
-            os.makedirs(args.output_dir + "/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + RECONST_IMAGES_DIR)
-        if not os.path.exists(args.output_dir + "/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + CALIB_IMAGES_DIR):
-            os.makedirs(args.output_dir + "/" + ctx.devices[device_num].get_info(rs.camera_info.serial_number) + CALIB_IMAGES_DIR)
+        stacked = np.hstack(ir_images) if len(ir_images) > 1 else ir_images[0]
+        cv2.imshow("Infrared", stacked)
+        key = cv2.waitKey(1) & 0xFF
 
-    json.dump(configuration_parameters, open(args.config_file, "w"), indent=4)
-
-else:
-    print("No Intel Device connected")
-    exit(-1)
-
-
-
-"""
-START RECORDING SOME FRAMES
-
-"""
-
-color_images = len(serial_numbers) * [0]
-ir_images = len(serial_numbers) * [0]
-ir_images_processed = len(serial_numbers) * [0] 
-image_count = 0
-exposure_d415 = args.exposure
-gain_d415 = args.gain
-
-set_gain = False
-
-for i in range(len(serial_numbers)):
-
-    sensor = profiles[i].get_device().query_sensors()[0]
-
-    if set_gain == False:
-        try:
-            sensor.set_option(rs.option.gain, gain_d415)
-        finally:
-            set_gain = True
-    
-    sensor.set_option(rs.option.exposure, exposure_d415)
-
-try:
-    while True:
-
-        for i in range(len(serial_numbers)):
-
-            frames = pipelines[i].wait_for_frames()
-
-            color_frame = frames.get_color_frame()
-            if not color_frame:
+        if key == 27:  # ESC
+            break
+        if key == 32:  # SPACE
+            if sum(valid_board) < args.min_views:
+                print("Board not visible in enough cameras ({} < {}). Frame skipped.".format(sum(valid_board), args.min_views))
                 continue
-            color_images[i] = np.asanyarray(color_frame.get_data())
+            capture_count += 1
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            for s, img in zip(serials, ir_images):
+                fname = out_root / s / CALIB_DIR_NAME / f"image_{capture_count}.jpg"
+                cv2.imwrite(str(fname), img)
+            print(f"Saved set {capture_count}/{cfg['num_calibration_imgs']} (board visible in {sum(valid_board)} views)")
 
-            ir_frame = frames.first(rs.stream.infrared)
-            if not ir_frame:
-                continue
+    cv2.destroyAllWindows()
+    for plc in pipelines:
+        plc.stop()
+    print("Done.")
 
-            ir_frame_original = np.asanyarray(ir_frame.get_data())
-            ir_frame_processed = np.copy(color_images[i])
-            corners_1, ids_1, rejectedImgPoints_1 = aruco.detectMarkers(ir_frame_original, ARUCO_DICT, parameters=ARUCO_PARAMETERS)
-
-            if len(corners_1) != 0:
-                corners_1, ids_1, rejectedImgPoints_1, recoveredIds_1 = aruco.refineDetectedMarkers(
-                image=ir_frame_original,
-                board=CHARUCO_BOARD,
-                detectedCorners=corners_1,
-                detectedIds=ids_1,
-                rejectedCorners=rejectedImgPoints_1,
-                cameraMatrix=cam1_mtx,
-                distCoeffs=distCoeffs)
-                
-            # Only try to find CharucoBoard if we found markers
-                if ids_1 is not None and len(ids_1) > 10:
-                # Get charuco corners and ids from detected aruco markers
-                    response_1, charuco_corners_1, charuco_ids_1 = aruco.interpolateCornersCharuco(
-                    markerCorners=corners_1,
-                    markerIds=ids_1,
-                    image=ir_frame_original,
-                    board=CHARUCO_BOARD)
-
-                    if (response_1 is not None) and (response_1 > 20) and (len(charuco_ids_1) >= args.threshold_charuco):
-
-                        objp_matched = objp[charuco_ids_1.flatten()]
-                        objpoints.append(objp_matched)
-                        imgpoints_1.append(charuco_corners_1)
-
-                        # Outline all of the markers detected in our image
-                        ir_frame_processed = aruco.drawDetectedMarkers(ir_frame_processed, corners_1, borderColor=(0, 0, 255))
-                        
-
-
-            ir_images[i] = ir_frame_original
-            ir_images_processed[i] = ir_frame_processed
-
-        # Stack all images horizontally
-        # images_color = np.hstack(tuple(color_images))
-        images_ir = np.hstack(tuple(ir_images_processed))
-
-        # Show images from all cameras
-        cv.namedWindow('RealSense', cv.WINDOW_NORMAL)
-        cv.imshow('RealSense', images_ir)
-        ch = cv.waitKey(1)
-        if ch==32:
-            image_count +=1
-            print("Saving image: ", image_count)
-            for i in range(len(serial_numbers)):
-                cv.imwrite(args.output_dir + '/' + serial_numbers[i] + CALIB_IMAGES_DIR + '/image_' + str(image_count) + '.jpg', ir_images[i])
-
-            if image_count == num_images:
-                break
-
-finally:
-
-    # Stop streaming
-    for pipeline in pipelines:
-        pipeline.stop()
-
-    cv.destroyAllWindows()
+if __name__ == "__main__":
+    main()
